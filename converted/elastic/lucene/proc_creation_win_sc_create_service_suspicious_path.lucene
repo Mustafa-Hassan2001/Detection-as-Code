@@ -1,0 +1,1 @@
+(process.executable.caseless:*\\sc.exe OR process.pe.original_file_name:sc.exe) AND (process.command_line:*\ create\ * AND process.command_line:*binPath*) AND (process.command_line:(*\\Users\\Public\\* OR *\\AppData\\* OR *\\Temp\\* OR *\\ProgramData\\* OR *powershell* OR *cmd\ \/c* OR *cmd.exe\ \/c* OR *%COMSPEC%*))

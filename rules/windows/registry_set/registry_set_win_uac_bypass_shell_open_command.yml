@@ -1,0 +1,34 @@
+title: UAC Bypass via Shell Open Command Hijack (ms-settings / mscfile)
+id: 32d3b24c-9680-4e8a-81f1-a2594ec11ef0
+status: test
+description: |
+  Detects writes to HKCU\Software\Classes\ms-settings\shell\open\command or
+  ...\mscfile\shell\open\command. Auto-elevating binaries such as fodhelper.exe,
+  computerdefaults.exe (ms-settings) and eventvwr.exe (mscfile) look these per-user keys
+  up before the machine-wide ones, so a medium-integrity user can make them start an
+  arbitrary command at high integrity without a UAC prompt. There is no normal reason to
+  create these keys in HKCU, so the rule needs no filter.
+references:
+  - https://attack.mitre.org/techniques/T1548/002/
+  - https://github.com/redcanaryco/atomic-red-team/blob/master/atomics/T1548.002/T1548.002.md
+  - https://github.com/SigmaHQ/sigma/blob/05d1031f537e830b76da53bae2400c5814c89165/rules/windows/registry/registry_event/registry_event_shell_open_keys_manipulation.yml
+author: Syed Mustafa Hassan
+date: 2026-10-29
+related:
+  - id: 152f3630-77c1-4284-bcc0-4cc68ab2f6e7
+    type: similar
+tags:
+  - attack.privilege-escalation
+  - attack.t1548.002
+logsource:
+  category: registry_set
+  product: windows
+detection:
+  selection:
+    TargetObject|contains:
+      - '\Software\Classes\ms-settings\shell\open\command'
+      - '\Software\Classes\mscfile\shell\open\command'
+  condition: selection
+falsepositives:
+  - None expected in a managed environment.
+level: high

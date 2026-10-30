@@ -1,0 +1,116 @@
+# pySigma processing pipeline: Sigma taxonomy -> Wazuh indexer (OpenSearch) field names.
+#
+# Used together with the built-in `sysmon` pipeline (priority 10), which first adds the
+# Sysmon EventID / Channel conditions for each Windows log source category. This pipeline
+# (priority 60) then renames every field to where the Wazuh decoders store it:
+#   * Windows eventchannel decoder -> data.win.system.* / data.win.eventdata.* (camelCase)
+#   * Linux auditd decoder         -> data.audit.*  (records of one event are merged)
+#   * Zeek JSON via JSON decoder   -> data.<zeek field>, log type taken from `location`
+# Linux process_creation (Sysmon for Linux) has no stock Wazuh decoder, so those rules are
+# rejected explicitly with a rule_failure instead of silently producing wrong field names.
+name: Wazuh indexer field mappings (Detection-as-Code)
+priority: 60
+transformations:
+  # ---------------- Windows (Sysmon via Wazuh eventchannel) ----------------
+  - id: wazuh_windows_fields
+    type: field_name_mapping
+    mapping:
+      EventID: data.win.system.eventID
+      Channel: data.win.system.channel
+      Image: data.win.eventdata.image
+      OriginalFileName: data.win.eventdata.originalFileName
+      CommandLine: data.win.eventdata.commandLine
+      ParentImage: data.win.eventdata.parentImage
+      ParentCommandLine: data.win.eventdata.parentCommandLine
+      User: data.win.eventdata.user
+      TargetObject: data.win.eventdata.targetObject
+      Details: data.win.eventdata.details
+      EventType: data.win.eventdata.eventType
+      SourceImage: data.win.eventdata.sourceImage
+      TargetImage: data.win.eventdata.targetImage
+      GrantedAccess: data.win.eventdata.grantedAccess
+      CallTrace: data.win.eventdata.callTrace
+    rule_conditions:
+      - type: logsource
+        product: windows
+
+  # ---------------- Linux process_creation: not decodable by stock Wazuh ----------------
+  - id: wazuh_linux_process_creation_unsupported
+    type: rule_failure
+    message: >-
+      Linux process_creation (Sysmon for Linux) has no stock Wazuh decoder/field mapping.
+      Use the Elastic target, or add a Sysmon-for-Linux decoder and extend pipelines/wazuh.yml.
+    rule_conditions:
+      - type: logsource
+        category: process_creation
+        product: linux
+
+  # ---------------- Linux auditd ----------------
+  # Wazuh merges the SYSCALL/PATH/CWD records of an audit event into one document, so the
+  # per-record discriminators used by the Sigma rules (type, nametype) do not exist there.
+  - id: wazuh_auditd_drop_record_fields
+    type: drop_detection_item
+    field_name_conditions:
+      - type: include_fields
+        fields:
+          - type
+          - nametype
+    rule_conditions:
+      - type: logsource
+        product: linux
+        service: auditd
+  - id: wazuh_auditd_fields
+    type: field_name_mapping
+    mapping:
+      name: data.audit.file.name
+      exe: data.audit.exe
+      key: data.audit.key
+      comm: data.audit.command
+    rule_conditions:
+      - type: logsource
+        product: linux
+        service: auditd
+
+  # ---------------- Zeek (JSON logs read by Wazuh logcollector) ----------------
+  - id: wazuh_zeek_http_source
+    type: add_condition
+    conditions:
+      location: '*http.log'
+    rule_conditions:
+      - type: logsource
+        product: zeek
+        service: http
+  - id: wazuh_zeek_dns_source
+    type: add_condition
+    conditions:
+      location: '*dns.log'
+    rule_conditions:
+      - type: logsource
+        product: zeek
+        service: dns
+  - id: wazuh_zeek_ssh_source
+    type: add_condition
+    conditions:
+      location: '*ssh.log'
+    rule_conditions:
+      - type: logsource
+        product: zeek
+        service: ssh
+  - id: wazuh_zeek_fields
+    type: field_name_mapping
+    mapping:
+      uri: data.uri
+      host: data.host
+      method: data.method
+      user_agent: data.user_agent
+      status_code: data.status_code
+      query: data.query
+      qtype_name: data.qtype_name
+      auth_attempts: data.auth_attempts
+      auth_success: data.auth_success
+      id.orig_h: data.id.orig_h
+      id.resp_h: data.id.resp_h
+      id.resp_p: data.id.resp_p
+    rule_conditions:
+      - type: logsource
+        product: zeek

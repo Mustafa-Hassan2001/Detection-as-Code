@@ -1,0 +1,24 @@
+# NEGATIVE TEST FIXTURE - must be REJECTED by `sigma check` (see `make selftest`).
+# Defect: the condition references `selection_child`, which does not exist, and the
+# defined `selection_parent` is never used (dangling condition + dangling detection).
+title: Broken Rule Fixture For CI Self-Test
+id: 3f0a6a52-6a43-4c4b-9a43-0d9b2b0b8e11
+status: test
+description: Intentionally malformed rule used to prove that the lint stage fails the build.
+references:
+  - https://attack.mitre.org/techniques/T1059/001/
+author: Syed Mustafa Hassan
+date: 2026-10-29
+tags:
+  - attack.execution
+  - attack.t1059.001
+logsource:
+  category: process_creation
+  product: windows
+detection:
+  selection_parent:
+    ParentImage|endswith: '\WINWORD.EXE'
+  condition: selection_child
+falsepositives:
+  - None, this is a fixture.
+level: low

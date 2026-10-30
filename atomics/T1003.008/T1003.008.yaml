@@ -1,0 +1,15 @@
+attack_technique: T1003.008
+display_name: 'OS Credential Dumping: /etc/passwd and /etc/shadow'
+atomic_tests:
+- name: DAC - Read /etc/shadow with cat
+  auto_generated_guid: 33835ccd-5720-4b43-b503-24105d4bfff6
+  description: |
+    Same as the upstream "Access /etc/shadow (Local)" test, but the output is discarded so
+    no hashes are written anywhere. Triggers: proc_creation_lnx_shadow_file_access.
+  supported_platforms:
+  - linux
+  executor:
+    command: |
+      cat /etc/shadow > /dev/null
+    name: sh
+    elevation_required: true

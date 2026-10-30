@@ -1,0 +1,28 @@
+attack_technique: T1190
+display_name: 'Exploit Public-Facing Application'
+atomic_tests:
+- name: DAC - Send exploit-pattern HTTP requests to a lab web server
+  auto_generated_guid: 4444c0ca-afac-4241-9915-cdaf6d09121a
+  description: |
+    LAB MODE. Sends three requests carrying path-traversal, SQL-injection and Log4Shell
+    JNDI patterns to a lab web server on the Zeek-monitored segment. These are inert probe
+    strings (no working exploit); the JNDI lookup points to loopback. --path-as-is stops
+    curl from normalising "../". Triggers: zeek_http_web_exploitation_patterns.
+  supported_platforms:
+  - linux
+  input_arguments:
+    target_host:
+      description: Lab web server (RFC 1918 / loopback only)
+      type: string
+      default: 127.0.0.1
+    target_port:
+      description: HTTP port
+      type: integer
+      default: 80
+  executor:
+    command: |
+      for p in "/cgi-bin/../../../../etc/passwd" "/products.php?id=1%20UNION%20SELECT%201,2--" "/?x=%24%7Bjndi%3Aldap%3A%2F%2F127.0.0.1%3A1389%2Fa%7D"; do
+        curl -s -o /dev/null --path-as-is -m 5 -w "%{http_code} ${p}\n" "http://#{target_host}:#{target_port}${p}" || true
+      done
+    name: sh
+    elevation_required: false

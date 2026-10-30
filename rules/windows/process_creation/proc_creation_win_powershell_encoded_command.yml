@@ -1,0 +1,45 @@
+title: PowerShell Launched With an Encoded Command
+id: d744f24e-b975-497f-99b6-3dc6d0ca10b5
+status: test
+description: |
+  Detects powershell.exe / pwsh.exe started with the -EncodedCommand parameter (or any of
+  its accepted abbreviations such as -enc, -ec, -e). The parameter takes a Base64-encoded
+  UTF-16LE script, which attackers use to avoid quoting problems and to hide the payload
+  from casual inspection of command lines. The windash modifier also matches the "/" and
+  Unicode-dash variants that PowerShell accepts as parameter prefixes.
+references:
+  - https://attack.mitre.org/techniques/T1059/001/
+  - https://learn.microsoft.com/en-us/powershell/module/microsoft.powershell.core/about/about_powershell_exe
+  - https://github.com/redcanaryco/atomic-red-team/blob/master/atomics/T1059.001/T1059.001.md
+  - https://github.com/SigmaHQ/sigma/blob/05d1031f537e830b76da53bae2400c5814c89165/rules/windows/process_creation/proc_creation_win_powershell_encode.yml
+author: 'Syed Mustafa Hassan (adaptation); original SigmaHQ rule(s) by frack113'
+date: 2026-10-29
+license: DRL-1.1
+related:
+  - id: fb843269-508c-4b76-8b8d-88679db22ce7
+    type: derived
+tags:
+  - attack.execution
+  - attack.t1059.001
+logsource:
+  category: process_creation
+  product: windows
+detection:
+  selection_img:
+    - Image|endswith:
+        - '\powershell.exe'
+        - '\pwsh.exe'
+    - OriginalFileName:
+        - 'PowerShell.EXE'
+        - 'pwsh.dll'
+  selection_cli:
+    CommandLine|windash|contains:
+      - ' -e '
+      - ' -ec '
+      - ' -en '
+      - ' -enc '
+      - ' -enco'
+  condition: all of selection_*
+falsepositives:
+  - Some management agents (SCCM/ConfigMgr, Intune, Azure Guest Configuration) and installers launch encoded commands. Allow-list them by ParentImage after reviewing the decoded payload.
+level: medium

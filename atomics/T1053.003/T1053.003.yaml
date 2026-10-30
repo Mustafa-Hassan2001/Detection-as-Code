@@ -1,0 +1,17 @@
+attack_technique: T1053.003
+display_name: 'Scheduled Task/Job: Cron'
+atomic_tests:
+- name: DAC - Drop a file into /etc/cron.d
+  auto_generated_guid: a816ae53-97af-45be-9bfb-fd7f0d8aa3a2
+  description: |
+    Writes a cron.d entry that runs /bin/true every 30 minutes (harmless). auditd must watch
+    /etc/cron.d (see docs/lab-integration.md). Triggers: lnx_auditd_cron_file_modification.
+  supported_platforms:
+  - linux
+  executor:
+    command: |
+      printf '# DAC T1053.003 test - harmless\n*/30 * * * * root /bin/true\n' > /etc/cron.d/dac-test
+    cleanup_command: |
+      rm -f /etc/cron.d/dac-test
+    name: sh
+    elevation_required: true

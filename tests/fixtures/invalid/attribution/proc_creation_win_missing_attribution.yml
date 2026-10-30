@@ -1,0 +1,30 @@
+# NEGATIVE TEST FIXTURE - otherwise valid, but must be REJECTED by tools/validate_rules.py
+# (see `make selftest`). Defect: declares that it is derived from a SigmaHQ rule but drops
+# the DRL-1.1 licence, the original authors and the upstream link.
+title: Missing Attribution Fixture For CI Self-Test
+id: 0d8f3c6e-2b7a-4f1e-9c55-7a1e2d3b4c5f
+status: test
+description: |
+  Intentionally unattributed adaptation of an upstream SigmaHQ rule, used to prove that the
+  attribution gate in tools/validate_rules.py fails the build.
+references:
+  - https://attack.mitre.org/techniques/T1059/001/
+author: Syed Mustafa Hassan
+date: 2026-10-30
+related:
+  - id: fb843269-508c-4b76-8b8d-88679db22ce7
+    type: derived
+tags:
+  - attack.execution
+  - attack.t1059.001
+logsource:
+  category: process_creation
+  product: windows
+detection:
+  selection:
+    Image|endswith: '\powershell.exe'
+    CommandLine|contains: ' -enc '
+  condition: selection
+falsepositives:
+  - None, this is a fixture.
+level: low

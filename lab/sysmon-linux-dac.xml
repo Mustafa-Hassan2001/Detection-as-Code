@@ -1,0 +1,14 @@
+<!--
+  Minimal Sysmon for Linux configuration: log every process creation (EID 1), which the
+  Linux process_creation rules (11-15) need.
+  Install:  sudo sysmon -accepteula -i lab/sysmon-linux-dac.xml
+  Events go to syslog (/var/log/syslog) as XML; forward them to the SIEM (see
+  docs/lab-integration.md).
+-->
+<Sysmon schemaversion="4.81">
+  <EventFiltering>
+    <RuleGroup name="dac-process-create" groupRelation="or">
+      <ProcessCreate onmatch="exclude"/>
+    </RuleGroup>
+  </EventFiltering>
+</Sysmon>

@@ -1,0 +1,1 @@
+(event.category:process AND event.type:start) AND ((process.executable:*\/curl AND (process.command_line:(*\ \-T\ * OR *\ \-\-upload\-file\ * OR *\=@* OR *\ \-d\ @* OR *\ \-\-data\ @* OR *\ \-\-data\-binary\ @*))) OR (process.executable:*\/wget AND (process.command_line:(*\-\-post\-file* OR *\-\-body\-file*))))

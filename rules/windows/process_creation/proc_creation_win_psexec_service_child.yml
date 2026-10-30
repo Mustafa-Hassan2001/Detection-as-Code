@@ -1,0 +1,37 @@
+title: Process Spawned by the PsExec Service (PSEXESVC)
+id: 0403fbc7-d9f6-4529-a3d4-181aff95fb0c
+status: test
+description: |
+  Detects processes whose parent is PSEXESVC.exe, the service that Sysinternals PsExec
+  copies to the ADMIN$ share and installs on the remote host. Any child of it is a command
+  that was executed remotely over SMB (lateral movement) via a temporary service (service
+  execution). Detection happens on the *target* host, which is where the evidence is
+  reliable regardless of how the operator launched PsExec.
+references:
+  - https://attack.mitre.org/techniques/T1021/002/
+  - https://attack.mitre.org/techniques/T1569/002/
+  - https://learn.microsoft.com/en-us/sysinternals/downloads/psexec
+  - https://github.com/redcanaryco/atomic-red-team/blob/master/atomics/T1569.002/T1569.002.md
+  - https://github.com/SigmaHQ/sigma/blob/05d1031f537e830b76da53bae2400c5814c89165/rules/windows/process_creation/proc_creation_win_sysinternals_psexesvc_as_system.yml
+author: 'Syed Mustafa Hassan (adaptation); original SigmaHQ rule(s) by Florian Roth (Nextron Systems)'
+date: 2026-10-29
+license: DRL-1.1
+related:
+  - id: 7c0dcd3d-acf8-4f71-9570-f448b0034f94
+    type: derived
+tags:
+  - attack.lateral-movement
+  - attack.t1021.002
+  - attack.execution
+  - attack.t1569.002
+logsource:
+  category: process_creation
+  product: windows
+detection:
+  selection:
+    ParentImage|endswith: '\PSEXESVC.exe'
+  condition: selection
+falsepositives:
+  - IT administrators who legitimately use PsExec. Correlate with the source host and account in the matching 4624 logon (type 3) and allow-list admin jump hosts.
+  - Note - does not catch Impacket psexec.py / renamed services; see docs/rules.md for the gap.
+level: medium

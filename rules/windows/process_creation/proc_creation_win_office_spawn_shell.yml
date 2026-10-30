@@ -1,0 +1,55 @@
+title: Microsoft Office Application Spawning a Shell or Script Host
+id: 1a1c6175-a971-4f00-83be-0897e2ea37ea
+status: test
+description: |
+  Detects a Microsoft Office application (Word, Excel, PowerPoint, Outlook, Publisher,
+  OneNote) starting a command shell, script host or a LOLBin commonly abused to fetch or
+  run a second stage. This is the typical process tree produced when a user opens a
+  weaponised attachment with a macro or an embedded object (spearphishing attachment ->
+  user execution). Office applications have almost no legitimate reason to start these
+  binaries, which makes the parent/child relationship a high-signal indicator.
+references:
+  - https://attack.mitre.org/techniques/T1566/001/
+  - https://attack.mitre.org/techniques/T1204/002/
+  - https://github.com/redcanaryco/atomic-red-team/blob/master/atomics/T1204.002/T1204.002.md
+  - https://github.com/SigmaHQ/sigma/blob/05d1031f537e830b76da53bae2400c5814c89165/rules/windows/process_creation/proc_creation_win_office_susp_child_processes.yml
+author: 'Syed Mustafa Hassan (adaptation); original SigmaHQ rule(s) by Florian Roth (Nextron Systems), Markus Neis, FPT.EagleEye Team, Vadim Khrykov, Cyb3rEng, Michael Haag, Christopher Peacock @securepeacock, @scythe_io'
+date: 2026-10-29
+license: DRL-1.1
+related:
+  - id: 438025f9-5856-4663-83f7-52f878a70a50
+    type: derived
+tags:
+  - attack.initial-access
+  - attack.t1566.001
+  - attack.execution
+  - attack.t1204.002
+logsource:
+  category: process_creation
+  product: windows
+detection:
+  selection_parent:
+    ParentImage|endswith:
+      - '\WINWORD.EXE'
+      - '\EXCEL.EXE'
+      - '\POWERPNT.EXE'
+      - '\OUTLOOK.EXE'
+      - '\MSPUB.EXE'
+      - '\ONENOTE.EXE'
+  selection_child:
+    Image|endswith:
+      - '\cmd.exe'
+      - '\powershell.exe'
+      - '\pwsh.exe'
+      - '\wscript.exe'
+      - '\cscript.exe'
+      - '\mshta.exe'
+      - '\rundll32.exe'
+      - '\regsvr32.exe'
+      - '\certutil.exe'
+      - '\bitsadmin.exe'
+  condition: all of selection_*
+falsepositives:
+  - Legacy line-of-business macros that shell out (e.g. an Excel workbook that calls cmd.exe to map a drive). Baseline per host and allow-list by ParentCommandLine (document path) rather than disabling the rule.
+  - Office add-ins that launch helper scripts during installation or updates.
+level: high

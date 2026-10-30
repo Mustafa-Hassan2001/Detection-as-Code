@@ -1,0 +1,47 @@
+title: Service Created With sc.exe Pointing to a Suspicious Binary Path
+id: e5395250-334b-4787-bba0-367b9637c8fc
+status: test
+description: |
+  Detects sc.exe creating a new Windows service whose binPath points to a user-writable
+  directory or wraps a shell / PowerShell command. Services run as LocalSystem by default,
+  so creating one is both a persistence and a privilege-escalation primitive. Legitimate
+  installers usually register services via MSI/SCM APIs with binaries in Program Files.
+references:
+  - https://attack.mitre.org/techniques/T1543/003/
+  - https://github.com/redcanaryco/atomic-red-team/blob/master/atomics/T1543.003/T1543.003.md
+  - https://github.com/SigmaHQ/sigma/blob/05d1031f537e830b76da53bae2400c5814c89165/rules/windows/process_creation/proc_creation_win_susp_service_creation.yml
+author: 'Syed Mustafa Hassan (adaptation); original SigmaHQ rule(s) by Nasreddine Bencherchali (Nextron Systems)'
+date: 2026-10-29
+license: DRL-1.1
+related:
+  - id: 17a1be64-8d88-40bf-b5ff-a4f7a50ebcc8
+    type: derived
+tags:
+  - attack.persistence
+  - attack.privilege-escalation
+  - attack.t1543.003
+logsource:
+  category: process_creation
+  product: windows
+detection:
+  selection_img:
+    - Image|endswith: '\sc.exe'
+    - OriginalFileName: 'sc.exe'
+  selection_create:
+    CommandLine|contains|all:
+      - ' create '
+      - 'binPath'
+  selection_susp:
+    CommandLine|contains:
+      - '\Users\Public\'
+      - '\AppData\'
+      - '\Temp\'
+      - '\ProgramData\'
+      - 'powershell'
+      - 'cmd /c'
+      - 'cmd.exe /c'
+      - '%COMSPEC%'
+  condition: all of selection_*
+falsepositives:
+  - Some vendor installers and RMM tools stage service binaries in ProgramData. Verify the signer of the referenced binary and allow-list by service name.
+level: high

@@ -1,0 +1,35 @@
+attack_technique: T1021.002
+display_name: 'Remote Services: SMB/Windows Admin Shares'
+atomic_tests:
+- name: DAC - PsExec remote command against a lab host
+  auto_generated_guid: 8418bf95-7c18-47c2-8daa-f9c25419fba3
+  description: |
+    Runs "ipconfig /all" on a lab host through Sysinternals PsExec, which copies PSEXESVC.exe
+    to ADMIN$ and starts it as a service (T1021.002 + T1569.002). The detection fires on the
+    TARGET host, so collect Sysmon from remote_host. "localhost" works for a single-VM lab.
+    Triggers: proc_creation_win_psexec_service_child.
+  supported_platforms:
+  - windows
+  input_arguments:
+    psexec_exe:
+      description: Path to PsExec64.exe
+      type: path
+      default: C:\Tools\PSTools\PsExec64.exe
+    remote_host:
+      description: Lab host to execute on (must be inside the isolated lab)
+      type: string
+      default: localhost
+  dependency_executor_name: powershell
+  dependencies:
+  - description: "PsExec must exist at #{psexec_exe}"
+    prereq_command: |
+      if (Test-Path "#{psexec_exe}") { exit 0 } else { exit 1 }
+    get_prereq_command: |
+      New-Item -ItemType Directory -Force -Path (Split-Path "#{psexec_exe}") | Out-Null
+      Invoke-WebRequest "https://download.sysinternals.com/files/PSTools.zip" -OutFile "$env:TEMP\PSTools.zip"
+      Expand-Archive "$env:TEMP\PSTools.zip" -DestinationPath (Split-Path "#{psexec_exe}") -Force
+  executor:
+    command: |
+      "#{psexec_exe}" \\#{remote_host} -accepteula -nobanner -s cmd.exe /c "ipconfig /all"
+    name: command_prompt
+    elevation_required: true

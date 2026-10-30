@@ -1,0 +1,1 @@
+(data.audit.file.name:(\/etc\/crontab* OR \/etc\/cron.d\/* OR \/etc\/cron.hourly\/* OR \/etc\/cron.daily\/* OR \/etc\/cron.weekly\/* OR \/etc\/cron.monthly\/* OR \/var\/spool\/cron\/*))

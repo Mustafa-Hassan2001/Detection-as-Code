@@ -1,0 +1,1 @@
+event.dataset:zeek.dns AND (dns.question.name:/.*[A-Za-z0-9_-]{40,}\..*/ AND (NOT (dns.question.name:(*.sophosxl.net OR *.avts.mcafee.com OR *.amazonaws.com))))

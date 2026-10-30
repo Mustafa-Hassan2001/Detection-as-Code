@@ -1,0 +1,22 @@
+attack_technique: T1053.005
+display_name: 'Scheduled Task/Job: Scheduled Task'
+atomic_tests:
+- name: DAC - schtasks creates a task that runs cmd.exe /c
+  auto_generated_guid: 0dc7f515-ae8e-4323-960a-85aa7746c49b
+  description: |
+    Creates (but does not run) a one-time scheduled task whose action is "cmd.exe /c" writing
+    to %TEMP%. Triggers: proc_creation_win_schtasks_create_suspicious.
+  supported_platforms:
+  - windows
+  input_arguments:
+    task_name:
+      description: Name of the scheduled task
+      type: string
+      default: DAC_T1053_005
+  executor:
+    command: |
+      schtasks /create /tn "#{task_name}" /tr "cmd.exe /c echo DAC > %TEMP%\dac-T1053.005.txt" /sc once /st 23:59 /f
+    cleanup_command: |
+      schtasks /delete /tn "#{task_name}" /f >nul 2>&1
+    name: command_prompt
+    elevation_required: false

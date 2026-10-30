@@ -1,0 +1,37 @@
+# Weekly early warning: would the rules still validate against the NEWEST ATT&CK release?
+# Does not change the pinned version - upgrading stays a reviewed commit
+# (`make attack-data ATTACK_VERSION=x.y`, fix tags, commit).
+name: attack-watch
+
+on:
+  schedule:
+    - cron: "17 6 * * 1"   # Mondays 06:17 UTC
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  newest-attack:
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.10"
+          cache: pip
+          cache-dependency-path: requirements.lock
+      - run: make setup
+      - name: Find newest Enterprise ATT&CK release
+        id: latest
+        run: |
+          v=$(curl -sSf https://raw.githubusercontent.com/mitre-attack/attack-stix-data/master/index.json \
+              | python3 -c "import json,sys;print(json.load(sys.stdin)['collections'][0]['versions'][0]['version'])")
+          echo "version=$v" >> "$GITHUB_OUTPUT"
+          echo "Newest Enterprise ATT&CK: $v"
+      - name: Validate rules against it (mapping check skipped - it pins the old version)
+        env:
+          DAC_ATTACK_VERSION: ${{ steps.latest.outputs.version }}
+        run: |
+          .venv/bin/python tools/update_attack_data.py --version "$DAC_ATTACK_VERSION"
+          .venv/bin/python tools/validate_rules.py --no-mapping --github

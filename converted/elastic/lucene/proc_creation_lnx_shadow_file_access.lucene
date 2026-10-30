@@ -1,0 +1,1 @@
+(event.category:process AND event.type:start) AND (((process.command_line:(*\/etc\/shadow* OR *\/etc\/gshadow*)) AND (process.executable:(*\/cat OR *\/less OR *\/more OR *\/head OR *\/tail OR *\/cp OR *\/scp OR *\/base64 OR *\/xxd OR *\/strings OR *\/tar OR *\/zip OR *\/curl OR *\/nc))) OR process.executable:*\/unshadow)

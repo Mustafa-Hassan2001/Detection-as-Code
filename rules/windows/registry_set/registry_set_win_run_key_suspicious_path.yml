@@ -1,0 +1,48 @@
+title: Registry Run Key Set to a Suspicious Path or Script Host
+id: 44bd15c2-2458-457d-9f16-7834ab9a9fa0
+status: test
+description: |
+  Detects a value being written under the Run / RunOnce autostart keys (HKLM or HKCU,
+  native and WOW6432Node) whose data points to a temp / public / ProgramData location or
+  invokes a script host. Every program referenced there is started at user logon, which
+  gives persistence (and privilege escalation when an HKLM key is used). Restricting the
+  value data to suspicious locations removes the large volume of legitimate software that
+  registers itself under Program Files.
+references:
+  - https://attack.mitre.org/techniques/T1547/001/
+  - https://github.com/redcanaryco/atomic-red-team/blob/master/atomics/T1547.001/T1547.001.md
+  - https://github.com/SigmaHQ/sigma/blob/05d1031f537e830b76da53bae2400c5814c89165/rules/windows/registry/registry_set/registry_set_susp_run_key_img_folder.yml
+author: Syed Mustafa Hassan
+date: 2026-10-29
+related:
+  - id: 02ee49e2-e294-4d0f-9278-f5b3212fc588
+    type: similar
+tags:
+  - attack.persistence
+  - attack.privilege-escalation
+  - attack.t1547.001
+logsource:
+  category: registry_set
+  product: windows
+detection:
+  selection_key:
+    TargetObject|contains:
+      - '\Software\Microsoft\Windows\CurrentVersion\Run\'
+      - '\Software\Microsoft\Windows\CurrentVersion\RunOnce\'
+      - '\Software\WOW6432Node\Microsoft\Windows\CurrentVersion\Run\'
+  selection_details:
+    Details|contains:
+      - '\AppData\Local\Temp\'
+      - '\Windows\Temp\'
+      - '\Users\Public\'
+      - '\ProgramData\'
+      - 'powershell'
+      - 'mshta'
+      - 'rundll32'
+      - 'wscript'
+      - 'cscript'
+      - '%TEMP%'
+  condition: all of selection_*
+falsepositives:
+  - Some installers write a RunOnce entry to a temp directory to finish setup after reboot. These are short-lived; review the binary signer.
+level: medium

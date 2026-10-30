@@ -1,0 +1,4 @@
+# Force LF everywhere: generated files are compared byte-for-byte by the CI drift check,
+# and Windows checkouts with CRLF would otherwise always look "stale".
+* text=auto eol=lf
+*.png binary

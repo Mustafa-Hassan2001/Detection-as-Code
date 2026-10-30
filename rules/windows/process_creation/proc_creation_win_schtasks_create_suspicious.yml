@@ -1,0 +1,52 @@
+title: Scheduled Task Created With Suspicious Action or Location
+id: afc4a092-9b21-46d3-ab4d-11f090c9b6da
+status: test
+description: |
+  Detects schtasks.exe being used to create a scheduled task whose action runs a script
+  interpreter / LOLBin, or a binary from a user-writable directory, or downloads from a URL.
+  Scheduled tasks give execution, persistence (survives reboot) and, when created with
+  /ru SYSTEM, privilege escalation. Legitimate software normally registers tasks pointing
+  to binaries under Program Files, so the "suspicious action" constraint keeps volume low.
+references:
+  - https://attack.mitre.org/techniques/T1053/005/
+  - https://github.com/redcanaryco/atomic-red-team/blob/master/atomics/T1053.005/T1053.005.md
+  - https://github.com/SigmaHQ/sigma/blob/05d1031f537e830b76da53bae2400c5814c89165/rules/windows/process_creation/proc_creation_win_schtasks_env_folder.yml
+author: Syed Mustafa Hassan
+date: 2026-10-29
+related:
+  - id: 81325ce1-be01-4250-944f-b4789644556f
+    type: similar
+tags:
+  - attack.execution
+  - attack.persistence
+  - attack.privilege-escalation
+  - attack.t1053.005
+logsource:
+  category: process_creation
+  product: windows
+detection:
+  selection_img:
+    - Image|endswith: '\schtasks.exe'
+    - OriginalFileName: 'schtasks.exe'
+  selection_create:
+    CommandLine|windash|contains: ' -create '
+  selection_susp:
+    CommandLine|contains:
+      - '\AppData\'
+      - '\Users\Public\'
+      - '\Temp\'
+      - '\ProgramData\'
+      - 'powershell'
+      - 'cmd /c'
+      - 'cmd.exe /c'
+      - 'mshta'
+      - 'rundll32'
+      - 'regsvr32'
+      - 'wscript'
+      - 'http://'
+      - 'https://'
+  condition: all of selection_*
+falsepositives:
+  - Software updaters (browsers, chat clients) that install per-user tasks under AppData. Tune with an allow-list of known task names (/tn values) for the environment.
+  - Administrators deploying maintenance scripts via PowerShell-based tasks.
+level: medium

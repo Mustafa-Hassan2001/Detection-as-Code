@@ -1,0 +1,45 @@
+title: File Upload With curl or wget
+id: e2b1c36d-e4ff-416f-aa9f-9bf5a66cf97d
+status: test
+description: |
+  Detects curl or wget being used to send a local file to a remote server (curl -T /
+  --upload-file, curl form or data upload with "@file", wget --post-file / --body-file).
+  These are standard tools present on almost every Linux host, which makes them the
+  simplest way to exfiltrate collected data over plain HTTP(S) or FTP without bringing any
+  attacker tooling. Downloads (the common legitimate case) are not matched.
+references:
+  - https://attack.mitre.org/techniques/T1048/003/
+  - https://curl.se/docs/manpage.html
+  - https://github.com/redcanaryco/atomic-red-team/blob/master/atomics/T1048.003/T1048.003.md
+  - https://github.com/SigmaHQ/sigma/blob/05d1031f537e830b76da53bae2400c5814c89165/rules/linux/process_creation/proc_creation_lnx_susp_curl_fileupload.yml
+author: Syed Mustafa Hassan
+date: 2026-10-29
+related:
+  - id: 00b90cc1-17ec-402c-96ad-3a8117d7a582
+    type: similar
+tags:
+  - attack.exfiltration
+  - attack.t1048.003
+logsource:
+  category: process_creation
+  product: linux
+detection:
+  selection_curl:
+    Image|endswith: '/curl'
+    CommandLine|contains:
+      - ' -T '
+      - ' --upload-file '
+      - '=@'
+      - ' -d @'
+      - ' --data @'
+      - ' --data-binary @'
+  selection_wget:
+    Image|endswith: '/wget'
+    CommandLine|contains:
+      - '--post-file'
+      - '--body-file'
+  condition: 1 of selection_*
+falsepositives:
+  - CI/CD jobs and backup scripts that upload artefacts to internal repositories. Allow-list by destination host or service account.
+  - API clients posting JSON from files during development.
+level: medium

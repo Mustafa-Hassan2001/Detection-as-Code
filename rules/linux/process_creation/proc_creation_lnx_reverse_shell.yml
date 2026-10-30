@@ -1,0 +1,67 @@
+title: Reverse Shell Command Line Patterns
+id: 90b06b86-828b-437f-9a8a-4c46f27d9ee5
+status: test
+description: |
+  Detects command lines characteristic of interactive reverse shells on Linux - bash
+  redirection to /dev/tcp or /dev/udp, netcat started with -e/-c to execute a shell, the
+  mkfifo + "sh -i" + nc pipe, and the Python socket + pty.spawn one-liner. A reverse shell
+  is how an attacker turns a single command execution into an interactive session that
+  connects outwards (bypassing inbound firewalls). Health checks against localhost that
+  use /dev/tcp are filtered.
+references:
+  - https://attack.mitre.org/techniques/T1059/004/
+  - https://github.com/redcanaryco/atomic-red-team/blob/master/atomics/T1059.004/T1059.004.md
+  - https://github.com/SigmaHQ/sigma/blob/05d1031f537e830b76da53bae2400c5814c89165/rules/linux/builtin/lnx_shell_susp_rev_shells.yml
+  - https://github.com/SigmaHQ/sigma/blob/05d1031f537e830b76da53bae2400c5814c89165/rules/linux/builtin/lnx_susp_dev_tcp.yml
+  - https://github.com/SigmaHQ/sigma/blob/05d1031f537e830b76da53bae2400c5814c89165/rules/linux/process_creation/proc_creation_lnx_python_reverse_shell.yml
+author: 'Syed Mustafa Hassan (adaptation); original SigmaHQ rule(s) by @d4ns4n_, Nasreddine Bencherchali (Nextron Systems); Florian Roth (Nextron Systems); frack113'
+date: 2026-10-29
+license: DRL-1.1
+related:
+  - id: 738d9bcf-6999-4fdb-b4ac-3033037db8ab
+    type: derived
+  - id: 6cc5fceb-9a71-4c23-aeeb-963abe0b279c
+    type: derived
+  - id: 32e62bc7-3de0-4bb1-90af-532978fe42c0
+    type: derived
+tags:
+  - attack.execution
+  - attack.t1059.004
+logsource:
+  category: process_creation
+  product: linux
+detection:
+  selection_devtcp:
+    CommandLine|contains:
+      - '/dev/tcp/'
+      - '/dev/udp/'
+  selection_netcat:
+    Image|endswith:
+      - '/nc'
+      - '/ncat'
+      - '/netcat'
+      - '/nc.traditional'
+    CommandLine|contains:
+      - ' -e /bin/'
+      - ' -c /bin/'
+      - ' -e sh'
+      - ' -e bash'
+  selection_mkfifo:
+    CommandLine|contains|all:
+      - 'mkfifo'
+      - 'sh -i'
+      - 'nc '
+  selection_python:
+    CommandLine|contains|all:
+      - 'socket'
+      - 'connect'
+      - 'pty.spawn'
+  filter_optional_local_healthcheck:
+    CommandLine|contains:
+      - '/dev/tcp/127.0.0.1/'
+      - '/dev/tcp/localhost/'
+  condition: 1 of selection_* and not 1 of filter_optional_*
+falsepositives:
+  - Container health checks or scripts that probe remote ports with bash /dev/tcp. Extend the filter with the specific internal hosts once verified.
+  - Penetration testing activity.
+level: high

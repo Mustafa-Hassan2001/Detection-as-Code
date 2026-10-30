@@ -1,0 +1,33 @@
+title: SSH authorized_keys File Modified
+id: 2ac3e0d8-5390-4ed9-bc64-eb873298c10a
+status: test
+description: |
+  Detects auditd PATH records showing a write to an authorized_keys or authorized_keys2
+  file. Adding a public key there grants password-less SSH access that survives password
+  resets, so it is a favoured persistence mechanism (and privilege escalation when the
+  file belongs to root). The PARENT path record is filtered to avoid duplicates. Requires
+  audit watches on the relevant .ssh directories (see docs/lab-integration.md).
+references:
+  - https://attack.mitre.org/techniques/T1098/004/
+  - https://github.com/redcanaryco/atomic-red-team/blob/master/atomics/T1098.004/T1098.004.md
+author: Syed Mustafa Hassan
+date: 2026-10-29
+tags:
+  - attack.persistence
+  - attack.privilege-escalation
+  - attack.t1098.004
+logsource:
+  product: linux
+  service: auditd
+detection:
+  selection:
+    type: 'PATH'
+    name|endswith:
+      - '/.ssh/authorized_keys'
+      - '/.ssh/authorized_keys2'
+  filter_main_parent_record:
+    nametype: 'PARENT'
+  condition: selection and not 1 of filter_main_*
+falsepositives:
+  - Users adding their own keys, configuration management (Ansible authorized_key module), cloud-init on first boot.
+level: medium

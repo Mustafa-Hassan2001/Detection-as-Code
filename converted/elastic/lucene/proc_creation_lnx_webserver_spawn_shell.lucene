@@ -1,0 +1,1 @@
+(event.category:process AND event.type:start) AND (((process.parent.executable:(*\/httpd OR *\/apache2 OR *\/nginx OR *\/lighttpd OR *\/caddy)) OR process.parent.executable:*\/php\-fpm*) AND (process.executable:(*\/sh OR *\/bash OR *\/dash OR *\/zsh OR *\/whoami OR *\/id OR *\/uname OR *\/nc OR *\/ncat OR *\/curl OR *\/wget OR *\/python3 OR *\/perl)))

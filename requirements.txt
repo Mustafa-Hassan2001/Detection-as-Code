@@ -1,0 +1,11 @@
+# Top-level, pinned tool versions (exact transitive pins live in requirements.lock,
+# which `make setup` installs). Python >= 3.10.
+sigma-cli==3.1.0
+pySigma==1.5.1
+pySigma-backend-elasticsearch==2.1.1
+pySigma-backend-opensearch==2.0.3
+pySigma-backend-sqlite==2.0.0
+pySigma-pipeline-sysmon==2.0.0
+pySigma-pipeline-windows==2.0.1
+PyYAML==6.0.3
+yamllint==1.38.0

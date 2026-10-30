@@ -1,0 +1,43 @@
+title: DNS Query With Unusually Long Subdomain Label (Possible Tunneling)
+id: 5a792fb1-f2e0-499d-a656-db02c7b18236
+status: test
+description: |
+  Detects DNS queries (Zeek dns.log) whose left-most label is 40 or more characters of
+  Base32/Base64/hex-like text. DNS tunneling tools (iodine, dnscat2, DNSExfiltrator) encode
+  data into subdomains of an attacker-controlled zone, so exfiltrated data appears as long,
+  high-entropy labels (the protocol limit is 63 characters per label). Normal hostnames are
+  short and dictionary-like. Known security vendors that use long hashed labels for
+  reputation lookups are filtered. The filter is a deliberate noise-versus-coverage trade-off:
+  every excluded zone is a blind spot, e.g. tunneling through an attacker-controlled name
+  under amazonaws.com (e.g. an S3 bucket or API Gateway endpoint) would not alert.
+references:
+  - https://attack.mitre.org/techniques/T1048/003/
+  - https://attack.mitre.org/techniques/T1071/004/
+  - https://docs.zeek.org/en/master/scripts/base/protocols/dns/main.zeek.html
+author: Syed Mustafa Hassan
+date: 2026-10-29
+tags:
+  - attack.exfiltration
+  - attack.t1048.003
+  - attack.command-and-control
+  - attack.t1071.004
+logsource:
+  product: zeek
+  service: dns
+detection:
+  selection:
+    query|re: '.*[A-Za-z0-9_-]{40,}\..*'
+  # TUNING DECISION, NOT FREE: each zone below silences real tunnels that use it. In
+  # particular *.amazonaws.com is attacker-registrable (S3 buckets, API gateways), so this
+  # entry trades a recurring false positive for a known blind spot. Remove it if the
+  # environment does not generate long-label AWS lookups.
+  filter_optional_av_lookups:
+    query|endswith:
+      - '.sophosxl.net'
+      - '.avts.mcafee.com'
+      - '.amazonaws.com'
+  condition: selection and not 1 of filter_optional_*
+falsepositives:
+  - Security products and CDNs that encode hashes in DNS labels (extend the filter with the specific zones seen in the environment).
+  - DKIM / DMARC-related TXT lookups can have long selectors.
+level: medium

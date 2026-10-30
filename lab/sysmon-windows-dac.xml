@@ -1,0 +1,30 @@
+<!--
+  Minimal Sysmon (Windows) configuration covering exactly the telemetry the Windows rules
+  need. For a real lab prefer a maintained baseline (olafhartong/sysmon-modular or
+  SwiftOnSecurity/sysmon-config) and verify it contains the three blocks below.
+  Install:  Sysmon64.exe -accepteula -i lab\sysmon-windows-dac.xml
+  Update:   Sysmon64.exe -c lab\sysmon-windows-dac.xml
+-->
+<Sysmon schemaversion="4.90">
+  <HashAlgorithms>sha256</HashAlgorithms>
+  <CheckRevocation/>
+  <EventFiltering>
+    <!-- EID 1: all process creations (rules 1-7) -->
+    <RuleGroup name="dac-process-create" groupRelation="or">
+      <ProcessCreate onmatch="exclude"/>
+    </RuleGroup>
+    <!-- EID 10: handles opened to LSASS (rule 10) -->
+    <RuleGroup name="dac-process-access" groupRelation="or">
+      <ProcessAccess onmatch="include">
+        <TargetImage condition="end with">\lsass.exe</TargetImage>
+      </ProcessAccess>
+    </RuleGroup>
+    <!-- EID 12/13/14: autostart and shell-open-command keys (rules 8-9) -->
+    <RuleGroup name="dac-registry" groupRelation="or">
+      <RegistryEvent onmatch="include">
+        <TargetObject condition="contains">\CurrentVersion\Run</TargetObject>
+        <TargetObject condition="contains">\shell\open\command</TargetObject>
+      </RegistryEvent>
+    </RuleGroup>
+  </EventFiltering>
+</Sysmon>

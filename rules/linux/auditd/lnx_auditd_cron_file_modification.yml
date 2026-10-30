@@ -1,0 +1,46 @@
+title: Cron Configuration File Created or Modified
+id: 64a38787-0ede-4954-a03f-1f3e99639de2
+status: test
+description: |
+  Detects auditd PATH records for writes to system crontabs, the cron.d / cron.* drop-in
+  directories, or per-user crontabs in /var/spool/cron. Cron executes whatever is written
+  there on a schedule (as root for system crontabs), giving execution, persistence and
+  potentially privilege escalation. The PARENT path record (the directory entry auditd
+  logs alongside the file) is filtered so each change raises one alert. Requires the
+  audit watch rules in docs/lab-integration.md (-w <path> -p wa -k cron_persistence).
+references:
+  - https://attack.mitre.org/techniques/T1053/003/
+  - https://man7.org/linux/man-pages/man7/audit.rules.7.html
+  - https://github.com/redcanaryco/atomic-red-team/blob/master/atomics/T1053.003/T1053.003.md
+  - https://github.com/SigmaHQ/sigma/blob/05d1031f537e830b76da53bae2400c5814c89165/rules/linux/file_event/file_event_lnx_susp_cron_file_created.yml
+author: Syed Mustafa Hassan
+date: 2026-10-29
+related:
+  - id: 6c4e2f43-d94d-4ead-b64d-97e53fa2bd05
+    type: similar
+tags:
+  - attack.execution
+  - attack.persistence
+  - attack.privilege-escalation
+  - attack.t1053.003
+logsource:
+  product: linux
+  service: auditd
+detection:
+  selection:
+    type: 'PATH'
+    name|startswith:
+      - '/etc/crontab'
+      - '/etc/cron.d/'
+      - '/etc/cron.hourly/'
+      - '/etc/cron.daily/'
+      - '/etc/cron.weekly/'
+      - '/etc/cron.monthly/'
+      - '/var/spool/cron/'
+  filter_main_parent_record:
+    nametype: 'PARENT'
+  condition: selection and not 1 of filter_main_*
+falsepositives:
+  - Package installation (e.g. logrotate, certbot) drops files in /etc/cron.d and cron.daily. Correlate with the SYSCALL record exe field (dpkg/apt) or change windows.
+  - Users editing their own crontab with "crontab -e".
+level: medium

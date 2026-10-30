@@ -1,0 +1,61 @@
+# pySigma processing pipeline: Sigma Linux taxonomy -> Elastic Common Schema (ECS).
+#
+# pySigma-backend-elasticsearch ships ECS pipelines for Windows (ecs_windows) and Zeek
+# (ecs_zeek_beats) but not for Linux, so this file provides the mapping for:
+#   * process_creation (Sysmon for Linux / Elastic Defend / Auditbeat process events)
+#   * auditd file watches as stored by Auditbeat's auditd module (records merged; the
+#     watched path ends up in file.path)
+name: ECS Linux mappings (Detection-as-Code)
+priority: 60
+transformations:
+  - id: ecs_linux_process_creation_condition
+    type: add_condition
+    conditions:
+      event.category: process
+      event.type: start
+    rule_conditions:
+      - type: logsource
+        category: process_creation
+        product: linux
+  - id: ecs_linux_process_creation_fields
+    type: field_name_mapping
+    mapping:
+      Image: process.executable
+      CommandLine: process.command_line
+      ParentImage: process.parent.executable
+      ParentCommandLine: process.parent.command_line
+      User: user.name
+      CurrentDirectory: process.working_directory
+    rule_conditions:
+      - type: logsource
+        category: process_creation
+        product: linux
+  - id: ecs_auditd_drop_record_fields
+    type: drop_detection_item
+    field_name_conditions:
+      - type: include_fields
+        fields:
+          - type
+          - nametype
+    rule_conditions:
+      - type: logsource
+        product: linux
+        service: auditd
+  - id: ecs_auditd_fields
+    type: field_name_mapping
+    mapping:
+      name: file.path
+      exe: process.executable
+      key: tags
+    rule_conditions:
+      - type: logsource
+        product: linux
+        service: auditd
+  - id: ecs_auditd_module_condition
+    type: add_condition
+    conditions:
+      event.module: auditd
+    rule_conditions:
+      - type: logsource
+        product: linux
+        service: auditd

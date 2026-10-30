@@ -1,0 +1,1 @@
+(process.parent.executable.caseless:(*\\WINWORD.EXE OR *\\EXCEL.EXE OR *\\POWERPNT.EXE OR *\\OUTLOOK.EXE OR *\\MSPUB.EXE OR *\\ONENOTE.EXE)) AND (process.executable.caseless:(*\\cmd.exe OR *\\powershell.exe OR *\\pwsh.exe OR *\\wscript.exe OR *\\cscript.exe OR *\\mshta.exe OR *\\rundll32.exe OR *\\regsvr32.exe OR *\\certutil.exe OR *\\bitsadmin.exe))

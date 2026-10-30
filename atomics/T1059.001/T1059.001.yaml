@@ -1,0 +1,23 @@
+attack_technique: T1059.001
+display_name: 'Command and Scripting Interpreter: PowerShell'
+atomic_tests:
+- name: DAC - PowerShell -EncodedCommand execution
+  auto_generated_guid: 754285c4-4f36-480a-aa01-bb6a4c04e83f
+  description: |
+    Runs a harmless Write-Output through powershell.exe twice, once with -EncodedCommand
+    and once with the short form -enc, so both spellings are exercised.
+    Triggers: proc_creation_win_powershell_encoded_command.
+  supported_platforms:
+  - windows
+  input_arguments:
+    message:
+      description: Text echoed by the encoded script
+      type: string
+      default: DAC T1059.001 encoded command test
+  executor:
+    command: |
+      $enc = [Convert]::ToBase64String([Text.Encoding]::Unicode.GetBytes('Write-Output "#{message}"'))
+      powershell.exe -NoProfile -EncodedCommand $enc
+      powershell.exe -nop -enc $enc
+    name: powershell
+    elevation_required: false

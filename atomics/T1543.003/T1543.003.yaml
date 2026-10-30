@@ -1,0 +1,23 @@
+attack_technique: T1543.003
+display_name: 'Create or Modify System Process: Windows Service'
+atomic_tests:
+- name: DAC - sc.exe creates a service with a ProgramData binPath
+  auto_generated_guid: 9e183e0b-9226-4522-be18-18a09d2d2338
+  description: |
+    Registers a demand-start service whose binPath is in C:\ProgramData. The binary does
+    not exist and the service is never started, so nothing executes.
+    Triggers: proc_creation_win_sc_create_service_suspicious_path.
+  supported_platforms:
+  - windows
+  input_arguments:
+    service_name:
+      description: Name of the service to create
+      type: string
+      default: DACTestSvc
+  executor:
+    command: |
+      sc.exe create #{service_name} binPath= "C:\ProgramData\dac-test\dac-svc.exe" start= demand
+    cleanup_command: |
+      sc.exe delete #{service_name} >nul 2>&1
+    name: command_prompt
+    elevation_required: true

@@ -1,0 +1,58 @@
+title: Web Server Process Spawning a Shell or Recon Tool
+id: 55094ab3-1363-44a8-b02b-2a7dd2c8c41d
+status: test
+description: |
+  Detects a web server or PHP-FPM worker starting a shell, a reconnaissance command or a
+  download / networking utility. A web application should serve requests, not spawn
+  /bin/sh or whoami; when it does, the usual cause is a web shell that was dropped on the
+  server or a command-injection / RCE vulnerability being exploited. The child-process view
+  catches post-exploitation regardless of the specific exploit used.
+references:
+  - https://attack.mitre.org/techniques/T1505/003/
+  - https://attack.mitre.org/techniques/T1190/
+  - https://github.com/redcanaryco/atomic-red-team/blob/master/atomics/T1505.003/T1505.003.md
+  - https://github.com/SigmaHQ/sigma/blob/05d1031f537e830b76da53bae2400c5814c89165/rules/linux/process_creation/proc_creation_lnx_webshell_detection.yml
+author: 'Syed Mustafa Hassan (adaptation); original SigmaHQ rule(s) by Florian Roth (Nextron Systems), Nasreddine Bencherchali (Nextron Systems)'
+date: 2026-10-29
+license: DRL-1.1
+related:
+  - id: 818f7b24-0fba-4c49-a073-8b755573b9c7
+    type: derived
+tags:
+  - attack.persistence
+  - attack.t1505.003
+  - attack.initial-access
+  - attack.t1190
+logsource:
+  category: process_creation
+  product: linux
+detection:
+  selection_parent_server:
+    ParentImage|endswith:
+      - '/httpd'
+      - '/apache2'
+      - '/nginx'
+      - '/lighttpd'
+      - '/caddy'
+  selection_parent_phpfpm:
+    ParentImage|contains: '/php-fpm'
+  selection_child:
+    Image|endswith:
+      - '/sh'
+      - '/bash'
+      - '/dash'
+      - '/zsh'
+      - '/whoami'
+      - '/id'
+      - '/uname'
+      - '/nc'
+      - '/ncat'
+      - '/curl'
+      - '/wget'
+      - '/python3'
+      - '/perl'
+  condition: 1 of selection_parent_* and selection_child
+falsepositives:
+  - CGI applications and PHP code that legitimately call shell helpers (mail(), ImageMagick wrappers). Allow-list by the exact CommandLine after review.
+  - Java application servers are intentionally not included as parents because they spawn shells routinely; see docs/rules.md.
+level: high

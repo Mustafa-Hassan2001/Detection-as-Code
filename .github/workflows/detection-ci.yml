@@ -1,0 +1,104 @@
+# Detection-as-Code CI: every push / PR must pass lint -> validate -> test -> convert ->
+# coverage. Each job calls the same Makefile target a developer runs locally, so a green
+# local `make ci` predicts a green pipeline.
+name: detection-ci
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  PYTHON_VERSION: "3.10"   # matches Ubuntu 22.04 (WSL2) used for local development
+
+jobs:
+  lint-validate:
+    name: 1. Lint & validate rules
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: pip
+          cache-dependency-path: requirements.lock
+      - name: Install pinned toolchain
+        run: make setup
+      - name: YAML lint + sigma check (fails on malformed rules)
+        run: make lint
+      - name: Metadata, ATT&CK and mapping validation
+        run: make validate
+      - name: Self-test - gates must reject known-bad rules
+        run: make selftest
+
+  test:
+    name: 2. Test rules against sample logs
+    needs: lint-validate
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: pip
+          cache-dependency-path: requirements.lock
+      - run: make setup
+      - name: Regenerate synthetic samples (must match committed copy)
+        run: make samples drift
+      - name: Run rule unit tests (true/false positive checks)
+        run: make test
+      - name: Publish test report
+        if: always()
+        run: test -f build/test-report.md && cat build/test-report.md >> "$GITHUB_STEP_SUMMARY" || true
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: test-report
+          path: build/test-report.*
+
+  convert:
+    name: 3. Convert Sigma -> SIEM queries
+    needs: lint-validate
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: pip
+          cache-dependency-path: requirements.lock
+      - run: make setup
+      - name: Convert all rules with sigma-cli (fails on unexpected conversion errors)
+        run: make convert
+      - name: Committed converted/ must match the Sigma source
+        run: make drift
+      - uses: actions/upload-artifact@v4
+        with:
+          name: converted-queries
+          path: converted/
+
+  coverage:
+    name: 4. ATT&CK coverage report
+    needs: [test, convert]
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: pip
+          cache-dependency-path: requirements.lock
+      - run: make setup
+      - name: Build Navigator layer, Markdown summary and heatmap
+        run: make coverage
+      - name: Committed coverage/ must be up to date
+        run: make drift
+      - name: Publish coverage summary
+        run: cat coverage/coverage.md >> "$GITHUB_STEP_SUMMARY"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: attack-coverage
+          path: coverage/

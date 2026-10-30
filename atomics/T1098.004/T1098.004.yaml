@@ -1,0 +1,21 @@
+attack_technique: T1098.004
+display_name: 'Account Manipulation: SSH Authorized Keys'
+atomic_tests:
+- name: DAC - Append a marker line to authorized_keys (restored on cleanup)
+  auto_generated_guid: 49ef24e3-30c1-4bde-ab41-9bc2638930a1
+  description: |
+    Backs up the current user's authorized_keys, then appends a comment line (not a key, so
+    it grants no access). Cleanup restores the original file exactly. auditd must watch the
+    user's ~/.ssh directory. Triggers: lnx_auditd_ssh_authorized_keys_modification.
+  supported_platforms:
+  - linux
+  executor:
+    command: |
+      mkdir -p "$HOME/.ssh" && chmod 700 "$HOME/.ssh"
+      if [ -f "$HOME/.ssh/authorized_keys" ]; then cp -p "$HOME/.ssh/authorized_keys" "$HOME/.ssh/authorized_keys.dac-bak"; else touch "$HOME/.ssh/.dac-created"; fi
+      echo "# DAC T1098.004 test marker - not a key" >> "$HOME/.ssh/authorized_keys"
+    cleanup_command: |
+      if [ -f "$HOME/.ssh/authorized_keys.dac-bak" ]; then mv -f "$HOME/.ssh/authorized_keys.dac-bak" "$HOME/.ssh/authorized_keys"; fi
+      if [ -f "$HOME/.ssh/.dac-created" ]; then rm -f "$HOME/.ssh/authorized_keys" "$HOME/.ssh/.dac-created"; fi
+    name: sh
+    elevation_required: false

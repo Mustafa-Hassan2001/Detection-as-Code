@@ -1,0 +1,29 @@
+attack_technique: T1204.002
+display_name: 'User Execution: Malicious File'
+atomic_tests:
+- name: DAC - Office-named parent process spawns cmd.exe
+  auto_generated_guid: 125e329b-6450-4823-b9d8-9d11e44a81e0
+  description: |
+    Reproduces the process tree of a malicious Office macro without needing Office or a
+    real macro: a copy of powershell.exe named WINWORD.EXE starts cmd.exe. Sysmon logs
+    ParentImage=...\WINWORD.EXE / Image=cmd.exe, which is exactly what the detection keys
+    on. Triggers: proc_creation_win_office_spawn_shell.
+    For a full-fidelity run, use the upstream test "OSTap Style Macro Execution" on a VM
+    with Office installed.
+  supported_platforms:
+  - windows
+  input_arguments:
+    fake_office_dir:
+      description: Folder that receives the renamed copy
+      type: path
+      default: $env:TEMP\DAC-T1204.002
+  executor:
+    command: |
+      $dir = "#{fake_office_dir}"
+      New-Item -ItemType Directory -Force -Path $dir | Out-Null
+      Copy-Item "$env:SystemRoot\System32\WindowsPowerShell\v1.0\powershell.exe" "$dir\WINWORD.EXE" -Force
+      & "$dir\WINWORD.EXE" -NoProfile -Command "Start-Process -FilePath cmd.exe -ArgumentList '/c echo DAC T1204.002 simulated macro child' -Wait -WindowStyle Hidden"
+    cleanup_command: |
+      Remove-Item -Recurse -Force "#{fake_office_dir}" -ErrorAction Ignore
+    name: powershell
+    elevation_required: false

@@ -1,0 +1,48 @@
+title: Read or Copy of /etc/shadow via Command Line Tools
+id: f74e6bd8-e100-4984-a771-6fce7bd301e7
+status: test
+description: |
+  Detects common file-reading, copying, encoding or transfer utilities being run with
+  /etc/shadow or /etc/gshadow on the command line, plus execution of John the Ripper's
+  "unshadow" helper. /etc/shadow holds the password hashes of local accounts; reading it
+  (root required) is the Linux analogue of dumping the SAM and is followed by offline
+  cracking. Legitimate administration uses vipw/passwd/chage rather than cat or cp.
+references:
+  - https://attack.mitre.org/techniques/T1003/008/
+  - https://github.com/redcanaryco/atomic-red-team/blob/master/atomics/T1003.008/T1003.008.md
+author: Syed Mustafa Hassan
+date: 2026-10-29
+tags:
+  - attack.credential-access
+  - attack.t1003.008
+logsource:
+  category: process_creation
+  product: linux
+detection:
+  selection_file:
+    CommandLine|contains:
+      - '/etc/shadow'
+      - '/etc/gshadow'
+  selection_tool:
+    Image|endswith:
+      - '/cat'
+      - '/less'
+      - '/more'
+      - '/head'
+      - '/tail'
+      - '/cp'
+      - '/scp'
+      - '/base64'
+      - '/xxd'
+      - '/strings'
+      - '/tar'
+      - '/zip'
+      - '/curl'
+      - '/nc'
+  selection_unshadow:
+    Image|endswith: '/unshadow'
+  condition: (selection_file and selection_tool) or selection_unshadow
+falsepositives:
+  - Backup jobs that archive /etc with tar (they include /etc/shadow on the command line only if listed explicitly). Allow-list the backup service account.
+  - Compliance scanners that inspect shadow file permissions with cat or head.
+level: high

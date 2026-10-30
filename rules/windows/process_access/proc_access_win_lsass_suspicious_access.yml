@@ -1,0 +1,55 @@
+title: Suspicious Process Access to LSASS Memory
+id: 56e05838-c043-4541-8228-141b5759e814
+status: test
+description: |
+  Detects a process opening a handle to lsass.exe with access rights that allow reading
+  its memory (PROCESS_VM_READ combined with query rights, or PROCESS_ALL_ACCESS) - the
+  prerequisite for credential dumping with Mimikatz, ProcDump, nanodump, etc. Known
+  operating-system and Defender processes that legitimately open LSASS are filtered by
+  full path (not by directory) so that LOLBins under System32 such as rundll32.exe are
+  still caught. Requires Sysmon event ID 10 with an LSASS-targeted ProcessAccess config.
+references:
+  - https://attack.mitre.org/techniques/T1003/001/
+  - https://learn.microsoft.com/en-us/windows/win32/procthread/process-security-and-access-rights
+  - https://github.com/redcanaryco/atomic-red-team/blob/master/atomics/T1003.001/T1003.001.md
+  - https://github.com/SigmaHQ/sigma/blob/05d1031f537e830b76da53bae2400c5814c89165/rules/windows/process_access/proc_access_win_lsass_memdump.yml
+  - https://github.com/SigmaHQ/sigma/blob/05d1031f537e830b76da53bae2400c5814c89165/rules/windows/process_access/proc_access_win_lsass_susp_access_flag.yml
+author: Syed Mustafa Hassan
+date: 2026-10-29
+related:
+  - id: 5ef9853e-4d0e-4a70-846f-a9ca37d876da
+    type: similar
+  - id: a18dd26b-6450-46de-8c91-9659150cf088
+    type: similar
+tags:
+  - attack.credential-access
+  - attack.t1003.001
+logsource:
+  category: process_access
+  product: windows
+detection:
+  selection:
+    TargetImage|endswith: '\lsass.exe'
+    GrantedAccess:
+      - '0x1010'
+      - '0x1410'
+      - '0x1438'
+      - '0x143a'
+      - '0x1fffff'
+      - '0x1f1fff'
+      - '0x1f3fff'
+  filter_main_os:
+    SourceImage:
+      - 'C:\Windows\System32\wininit.exe'
+      - 'C:\Windows\System32\csrss.exe'
+      - 'C:\Windows\System32\services.exe'
+      - 'C:\Windows\System32\lsm.exe'
+      - 'C:\Windows\System32\wbem\WmiPrvSE.exe'
+  filter_main_defender:
+    SourceImage|startswith:
+      - 'C:\ProgramData\Microsoft\Windows Defender\Platform\'
+      - 'C:\Program Files\Windows Defender\'
+  condition: selection and not 1 of filter_main_*
+falsepositives:
+  - EDR / AV agents and backup software that scan LSASS. Add their exact SourceImage paths to a filter after verifying the signer.
+level: high

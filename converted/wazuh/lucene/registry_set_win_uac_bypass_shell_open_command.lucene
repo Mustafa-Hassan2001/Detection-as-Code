@@ -1,0 +1,1 @@
+data.win.system.eventID:13 AND (data.win.eventdata.targetObject:(*\\Software\\Classes\\ms\-settings\\shell\\open\\command* OR *\\Software\\Classes\\mscfile\\shell\\open\\command*))

@@ -1,0 +1,14 @@
+# Validator configuration for `sigma check` (pySigma SigmaValidator.from_yaml).
+#
+# All built-in validators run, including `attacktag` (are the ATT&CK tags real?), with
+# one exclusion:
+#   - d3_fendtag : downloads the latest MITRE D3FEND ontology at run time. We use no
+#                  D3FEND tags, and an unpinned network download would make CI flaky.
+#
+# NOTE on attacktag: pySigma normally downloads the *latest* ATT&CK release at run time.
+# `make lint` first runs tools/prime_attack_cache.py, which fills pySigma's cache from the
+# ATT&CK release pinned in mapping/attack/, so this validator checks against exactly the
+# same ATT&CK version as tools/validate_rules.py and works offline.
+validators:
+  - all
+  - -d3_fendtag

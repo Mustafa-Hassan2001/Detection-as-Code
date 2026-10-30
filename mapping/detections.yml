@@ -1,0 +1,362 @@
+# Attack-to-detection mapping: the single source of truth that ties each Sigma rule to
+#   - the ATT&CK technique(s) it detects (must equal the rule's attack.tXXXX tags),
+#   - the emulation (atomic test) that should trigger it,
+#   - the log source / telemetry it needs (and how to collect it in the lab),
+#   - the synthetic sample events it must (and must not) match.
+#
+# Consumers:
+#   tools/validate_rules.py  - consistency between this file, the rules, atomics and samples
+#   tools/test_rules.py      - runs every rule against sample_data.file and compares hits
+#                              with expected_matches (+ known_false_positives)
+#   tools/coverage.py        - ATT&CK Navigator layer + Markdown coverage summary
+#
+# Field reference (see docs/mapping-schema.md for the full description):
+#   rule                      path of the Sigma rule
+#   rule_id                   the rule's UUID (guards against copy/paste errors)
+#   lab_validation            outcome of the emulation in the SecureNet Lab:
+#                             not-run | fired | not-fired | partial  (you fill this in)
+#   techniques                ATT&CK technique IDs, pinned to attack_version
+#   log_source.sigma          the rule's Sigma logsource (checked against the rule)
+#   log_source.telemetry      concrete event type required
+#   log_source.collection     how the SecureNet Lab collects it
+#   emulation.atomic          atomics/<technique>/<technique>.yaml (Atomic Red Team format)
+#   emulation.test            test name inside that file
+#   emulation.upstream        closest upstream Atomic Red Team test (verify with
+#                             `Invoke-AtomicTest <T#> -ShowDetailsBrief` at the pinned ART commit)
+#   sample_data.file          synthetic log file the rule is tested against
+#   sample_data.expected_matches     sample IDs the rule MUST match (true positives)
+#   sample_data.known_false_positives benign sample IDs the rule is EXPECTED to match
+#                                     (documented FP; keeps FP accounting honest)
+
+schema_version: 1
+attack_version: "20.0"
+
+detections:
+  # ===================================================================== Windows
+  - rule: rules/windows/process_creation/proc_creation_win_office_spawn_shell.yml
+    rule_id: 1a1c6175-a971-4f00-83be-0897e2ea37ea
+    lab_validation: not-run   # [FILL FROM YOUR RUN]: not-run | fired | not-fired | partial
+    techniques: [T1566.001, T1204.002]
+    log_source:
+      sigma: {category: process_creation, product: windows}
+      telemetry: Sysmon Event ID 1 (ProcessCreate)
+      collection: Sysmon on Windows victim -> Wazuh agent (eventchannel) / Winlogbeat
+    emulation:
+      atomic: atomics/T1204.002/T1204.002.yaml
+      test: DAC - Office-named parent process spawns cmd.exe
+      upstream: {technique: T1204.002, test: "OSTap Style Macro Execution (requires Office)"}
+    sample_data:
+      file: sample-logs/windows/sysmon.jsonl
+      expected_matches: [win-001]
+
+  - rule: rules/windows/process_creation/proc_creation_win_powershell_encoded_command.yml
+    rule_id: d744f24e-b975-497f-99b6-3dc6d0ca10b5
+    lab_validation: not-run   # [FILL FROM YOUR RUN]: not-run | fired | not-fired | partial
+    techniques: [T1059.001]
+    log_source:
+      sigma: {category: process_creation, product: windows}
+      telemetry: Sysmon Event ID 1 (ProcessCreate)
+      collection: Sysmon on Windows victim -> Wazuh agent (eventchannel) / Winlogbeat
+    emulation:
+      atomic: atomics/T1059.001/T1059.001.yaml
+      test: DAC - PowerShell -EncodedCommand execution
+      upstream: {technique: T1059.001, test: "ATHPowerShellCommandLineParameter -EncodedCommand parameter variations"}
+    sample_data:
+      file: sample-logs/windows/sysmon.jsonl
+      expected_matches: [win-002]
+
+  - rule: rules/windows/process_creation/proc_creation_win_schtasks_create_suspicious.yml
+    rule_id: afc4a092-9b21-46d3-ab4d-11f090c9b6da
+    lab_validation: not-run   # [FILL FROM YOUR RUN]: not-run | fired | not-fired | partial
+    techniques: [T1053.005]
+    log_source:
+      sigma: {category: process_creation, product: windows}
+      telemetry: Sysmon Event ID 1 (ProcessCreate)
+      collection: Sysmon on Windows victim -> Wazuh agent (eventchannel) / Winlogbeat
+    emulation:
+      atomic: atomics/T1053.005/T1053.005.yaml
+      test: DAC - schtasks creates a task that runs cmd.exe /c
+      upstream: {technique: T1053.005, test: "Scheduled Task Startup Script"}
+    sample_data:
+      file: sample-logs/windows/sysmon.jsonl
+      expected_matches: [win-003]
+
+  - rule: rules/windows/process_creation/proc_creation_win_sc_create_service_suspicious_path.yml
+    rule_id: e5395250-334b-4787-bba0-367b9637c8fc
+    lab_validation: not-run   # [FILL FROM YOUR RUN]: not-run | fired | not-fired | partial
+    techniques: [T1543.003]
+    log_source:
+      sigma: {category: process_creation, product: windows}
+      telemetry: Sysmon Event ID 1 (ProcessCreate)
+      collection: Sysmon on Windows victim -> Wazuh agent (eventchannel) / Winlogbeat
+    emulation:
+      atomic: atomics/T1543.003/T1543.003.yaml
+      test: DAC - sc.exe creates a service with a ProgramData binPath
+      upstream: {technique: T1543.003, test: "Service Installation CMD"}
+    sample_data:
+      file: sample-logs/windows/sysmon.jsonl
+      expected_matches: [win-005]
+
+  - rule: rules/windows/process_creation/proc_creation_win_rundll32_comsvcs_minidump.yml
+    rule_id: c1db81e8-e5e6-486c-a565-ec94f5027dd3
+    lab_validation: not-run   # [FILL FROM YOUR RUN]: not-run | fired | not-fired | partial
+    techniques: [T1003.001]
+    log_source:
+      sigma: {category: process_creation, product: windows}
+      telemetry: Sysmon Event ID 1 (ProcessCreate)
+      collection: Sysmon on Windows victim -> Wazuh agent (eventchannel) / Winlogbeat
+    emulation:
+      atomic: atomics/T1003.001/T1003.001.yaml
+      test: DAC - LSASS MiniDump via comsvcs.dll
+      upstream: {technique: T1003.001, test: "Dump LSASS.exe Memory using comsvcs.dll"}
+    sample_data:
+      file: sample-logs/windows/sysmon.jsonl
+      expected_matches: [win-008]
+
+  - rule: rules/windows/process_creation/proc_creation_win_psexec_service_child.yml
+    rule_id: 0403fbc7-d9f6-4529-a3d4-181aff95fb0c
+    lab_validation: not-run   # [FILL FROM YOUR RUN]: not-run | fired | not-fired | partial
+    techniques: [T1021.002, T1569.002]
+    log_source:
+      sigma: {category: process_creation, product: windows}
+      telemetry: Sysmon Event ID 1 (ProcessCreate) on the TARGET host
+      collection: Sysmon on Windows victim -> Wazuh agent (eventchannel) / Winlogbeat
+    emulation:
+      atomic: atomics/T1021.002/T1021.002.yaml
+      test: DAC - PsExec remote command against a lab host
+      upstream: {technique: T1569.002, test: "Use PsExec to execute a command on a remote host"}
+    sample_data:
+      file: sample-logs/windows/sysmon.jsonl
+      expected_matches: [win-010]
+
+  - rule: rules/windows/process_creation/proc_creation_win_winrm_wsmprovhost_child.yml
+    rule_id: 5073fdbb-980a-4af8-8ea2-8d153fbb3221
+    lab_validation: not-run   # [FILL FROM YOUR RUN]: not-run | fired | not-fired | partial
+    techniques: [T1021.006]
+    log_source:
+      sigma: {category: process_creation, product: windows}
+      telemetry: Sysmon Event ID 1 (ProcessCreate) on the TARGET host
+      collection: Sysmon on Windows victim -> Wazuh agent (eventchannel) / Winlogbeat
+    emulation:
+      atomic: atomics/T1021.006/T1021.006.yaml
+      test: DAC - Invoke-Command runs whoami over WinRM
+      upstream: {technique: T1021.006, test: "Invoke-Command (verify exact name at pinned ART commit)"}
+    sample_data:
+      file: sample-logs/windows/sysmon.jsonl
+      expected_matches: [win-011]
+      # win-106 (conhost.exe child of wsmprovhost) must NOT match: tests the filter.
+
+  - rule: rules/windows/registry_set/registry_set_win_run_key_suspicious_path.yml
+    rule_id: 44bd15c2-2458-457d-9f16-7834ab9a9fa0
+    lab_validation: not-run   # [FILL FROM YOUR RUN]: not-run | fired | not-fired | partial
+    techniques: [T1547.001]
+    log_source:
+      sigma: {category: registry_set, product: windows}
+      telemetry: Sysmon Event ID 13 (RegistryEvent - Value Set)
+      collection: Sysmon on Windows victim -> Wazuh agent (eventchannel) / Winlogbeat
+    emulation:
+      atomic: atomics/T1547.001/T1547.001.yaml
+      test: DAC - HKCU Run key pointing to C:\Users\Public
+      upstream: {technique: T1547.001, test: "Reg Key Run"}
+    sample_data:
+      file: sample-logs/windows/sysmon.jsonl
+      expected_matches: [win-004]
+
+  - rule: rules/windows/registry_set/registry_set_win_uac_bypass_shell_open_command.yml
+    rule_id: 32d3b24c-9680-4e8a-81f1-a2594ec11ef0
+    lab_validation: not-run   # [FILL FROM YOUR RUN]: not-run | fired | not-fired | partial
+    techniques: [T1548.002]
+    log_source:
+      sigma: {category: registry_set, product: windows}
+      telemetry: Sysmon Event ID 13 (RegistryEvent - Value Set)
+      collection: Sysmon on Windows victim -> Wazuh agent (eventchannel) / Winlogbeat
+    emulation:
+      atomic: atomics/T1548.002/T1548.002.yaml
+      test: DAC - ms-settings shell open command hijack (fodhelper)
+      upstream: {technique: T1548.002, test: "Bypass UAC using Fodhelper"}
+    sample_data:
+      file: sample-logs/windows/sysmon.jsonl
+      expected_matches: [win-006]
+
+  - rule: rules/windows/process_access/proc_access_win_lsass_suspicious_access.yml
+    rule_id: 56e05838-c043-4541-8228-141b5759e814
+    lab_validation: not-run   # [FILL FROM YOUR RUN]: not-run | fired | not-fired | partial
+    techniques: [T1003.001]
+    log_source:
+      sigma: {category: process_access, product: windows}
+      telemetry: Sysmon Event ID 10 (ProcessAccess) with TargetImage lsass.exe included in the Sysmon config
+      collection: Sysmon on Windows victim -> Wazuh agent (eventchannel) / Winlogbeat
+    emulation:
+      atomic: atomics/T1003.001/T1003.001.yaml
+      test: DAC - LSASS MiniDump via comsvcs.dll
+      upstream: {technique: T1003.001, test: "Dump LSASS.exe Memory using ProcDump"}
+    sample_data:
+      file: sample-logs/windows/sysmon.jsonl
+      expected_matches: [win-007, win-009]
+      # win-105 (Defender MsMpEng.exe) must NOT match: tests the filter.
+
+  # ===================================================================== Linux
+  - rule: rules/linux/process_creation/proc_creation_lnx_webserver_spawn_shell.yml
+    rule_id: 55094ab3-1363-44a8-b02b-2a7dd2c8c41d
+    lab_validation: not-run   # [FILL FROM YOUR RUN]: not-run | fired | not-fired | partial
+    techniques: [T1505.003, T1190]
+    log_source:
+      sigma: {category: process_creation, product: linux}
+      telemetry: Sysmon for Linux Event ID 1 (or auditd EXECVE / Elastic Defend process start)
+      collection: Sysmon for Linux on the web server -> syslog -> SIEM
+    emulation:
+      atomic: atomics/T1505.003/T1505.003.yaml
+      test: DAC - Process named apache2 spawns /bin/sh
+      upstream: {technique: T1505.003, test: "Web Shell Written to Disk (Windows only upstream)"}
+    sample_data:
+      file: sample-logs/linux/sysmon_linux_process_creation.jsonl
+      expected_matches: [lnx-001]
+
+  - rule: rules/linux/process_creation/proc_creation_lnx_reverse_shell.yml
+    rule_id: 90b06b86-828b-437f-9a8a-4c46f27d9ee5
+    lab_validation: not-run   # [FILL FROM YOUR RUN]: not-run | fired | not-fired | partial
+    techniques: [T1059.004]
+    log_source:
+      sigma: {category: process_creation, product: linux}
+      telemetry: Sysmon for Linux Event ID 1 (or auditd EXECVE / Elastic Defend process start)
+      collection: Sysmon for Linux on the web server -> syslog -> SIEM
+    emulation:
+      atomic: atomics/T1059.004/T1059.004.yaml
+      test: DAC - Bash /dev/tcp reverse shell to a loopback listener
+      upstream: {technique: T1059.004, test: "none upstream - custom test"}
+    sample_data:
+      file: sample-logs/linux/sysmon_linux_process_creation.jsonl
+      expected_matches: [lnx-002, lnx-006]
+      # lnx-102 (/dev/tcp/127.0.0.1 health check) must NOT match: tests the filter.
+
+  - rule: rules/linux/process_creation/proc_creation_lnx_chmod_setuid.yml
+    rule_id: 4c1c4e63-b9a9-43cb-89cf-1fae20958ede
+    lab_validation: not-run   # [FILL FROM YOUR RUN]: not-run | fired | not-fired | partial
+    techniques: [T1548.001]
+    log_source:
+      sigma: {category: process_creation, product: linux}
+      telemetry: Sysmon for Linux Event ID 1 (or auditd EXECVE / Elastic Defend process start)
+      collection: Sysmon for Linux -> syslog -> SIEM
+    emulation:
+      atomic: atomics/T1548.001/T1548.001.yaml
+      test: DAC - Set the setuid bit on a harmless test binary
+      upstream: {technique: T1548.001, test: "Set a SetUID flag on file"}
+    sample_data:
+      file: sample-logs/linux/sysmon_linux_process_creation.jsonl
+      expected_matches: [lnx-003]
+      # lnx-104 (dpkg postinst) must NOT match: tests the filter.
+
+  - rule: rules/linux/process_creation/proc_creation_lnx_shadow_file_access.yml
+    rule_id: f74e6bd8-e100-4984-a771-6fce7bd301e7
+    lab_validation: not-run   # [FILL FROM YOUR RUN]: not-run | fired | not-fired | partial
+    techniques: [T1003.008]
+    log_source:
+      sigma: {category: process_creation, product: linux}
+      telemetry: Sysmon for Linux Event ID 1 (or auditd EXECVE / Elastic Defend process start)
+      collection: Sysmon for Linux -> syslog -> SIEM
+    emulation:
+      atomic: atomics/T1003.008/T1003.008.yaml
+      test: DAC - Read /etc/shadow with cat
+      upstream: {technique: T1003.008, test: "Access /etc/shadow (Local)"}
+    sample_data:
+      file: sample-logs/linux/sysmon_linux_process_creation.jsonl
+      expected_matches: [lnx-004]
+
+  - rule: rules/linux/process_creation/proc_creation_lnx_curl_wget_file_upload.yml
+    rule_id: e2b1c36d-e4ff-416f-aa9f-9bf5a66cf97d
+    lab_validation: not-run   # [FILL FROM YOUR RUN]: not-run | fired | not-fired | partial
+    techniques: [T1048.003]
+    log_source:
+      sigma: {category: process_creation, product: linux}
+      telemetry: Sysmon for Linux Event ID 1 (or auditd EXECVE / Elastic Defend process start)
+      collection: Sysmon for Linux -> syslog -> SIEM
+    emulation:
+      atomic: atomics/T1048.003/T1048.003.yaml
+      test: DAC - curl form upload of a dummy file to a lab HTTP listener
+      upstream: {technique: T1048.003, test: "Exfiltration Over Alternative Protocol - HTTP"}
+    sample_data:
+      file: sample-logs/linux/sysmon_linux_process_creation.jsonl
+      expected_matches: [lnx-005]
+
+  - rule: rules/linux/auditd/lnx_auditd_cron_file_modification.yml
+    rule_id: 64a38787-0ede-4954-a03f-1f3e99639de2
+    lab_validation: not-run   # [FILL FROM YOUR RUN]: not-run | fired | not-fired | partial
+    techniques: [T1053.003]
+    log_source:
+      sigma: {product: linux, service: auditd}
+      telemetry: auditd PATH records from watch rules on cron paths (-p wa -k cron_persistence)
+      collection: auditd on the Linux host -> Wazuh agent (audit log format) / Auditbeat
+    emulation:
+      atomic: atomics/T1053.003/T1053.003.yaml
+      test: DAC - Drop a file into /etc/cron.d
+      upstream: {technique: T1053.003, test: "Cron - Add script to all cron subfolders"}
+    sample_data:
+      file: sample-logs/linux/auditd.jsonl
+      expected_matches: [aud-003]
+      known_false_positives: [aud-104]   # dpkg installing logrotate's cron.daily job
+
+  - rule: rules/linux/auditd/lnx_auditd_ssh_authorized_keys_modification.yml
+    rule_id: 2ac3e0d8-5390-4ed9-bc64-eb873298c10a
+    lab_validation: not-run   # [FILL FROM YOUR RUN]: not-run | fired | not-fired | partial
+    techniques: [T1098.004]
+    log_source:
+      sigma: {product: linux, service: auditd}
+      telemetry: auditd PATH records from watch rules on ~/.ssh directories (-p wa -k ssh_keys)
+      collection: auditd on the Linux host -> Wazuh agent (audit log format) / Auditbeat
+    emulation:
+      atomic: atomics/T1098.004/T1098.004.yaml
+      test: DAC - Append a marker line to authorized_keys (restored on cleanup)
+      upstream: {technique: T1098.004, test: "Modify SSH Authorized Keys"}
+    sample_data:
+      file: sample-logs/linux/auditd.jsonl
+      expected_matches: [aud-004]
+
+  # ===================================================================== Network (Zeek)
+  - rule: rules/network/zeek/zeek_http_web_exploitation_patterns.yml
+    rule_id: 70f438f8-26b9-44fb-a6b8-0c94369708a1
+    lab_validation: not-run   # [FILL FROM YOUR RUN]: not-run | fired | not-fired | partial
+    techniques: [T1190]
+    log_source:
+      sigma: {product: zeek, service: http}
+      telemetry: Zeek http.log
+      collection: Zeek sensor on the lab SPAN/mirror port -> JSON logs -> SIEM
+    emulation:
+      atomic: atomics/T1190/T1190.yaml
+      test: DAC - Send exploit-pattern HTTP requests to a lab web server
+      upstream: {technique: T1190, test: "none upstream - custom test"}
+    sample_data:
+      file: sample-logs/zeek/http.jsonl
+      expected_matches: [zk-http-001, zk-http-002, zk-http-003]
+
+  - rule: rules/network/zeek/zeek_ssh_password_guessing.yml
+    rule_id: 104ba47b-fdb1-4470-8c95-51b124143e96
+    lab_validation: not-run   # [FILL FROM YOUR RUN]: not-run | fired | not-fired | partial
+    techniques: [T1110.001]
+    log_source:
+      sigma: {product: zeek, service: ssh}
+      telemetry: Zeek ssh.log (auth_attempts)
+      collection: Zeek sensor on the lab SPAN/mirror port -> JSON logs -> SIEM
+    emulation:
+      atomic: atomics/T1110.001/T1110.001.yaml
+      test: DAC - Six wrong SSH passwords in a single connection
+      upstream: {technique: T1110.001, test: "none upstream for single-connection SSH guessing - custom test"}
+    sample_data:
+      file: sample-logs/zeek/ssh.jsonl
+      expected_matches: [zk-ssh-001, zk-ssh-002]
+
+  - rule: rules/network/zeek/zeek_dns_long_subdomain_tunneling.yml
+    rule_id: 5a792fb1-f2e0-499d-a656-db02c7b18236
+    lab_validation: not-run   # [FILL FROM YOUR RUN]: not-run | fired | not-fired | partial
+    techniques: [T1048.003, T1071.004]
+    log_source:
+      sigma: {product: zeek, service: dns}
+      telemetry: Zeek dns.log
+      collection: Zeek sensor on the lab SPAN/mirror port -> JSON logs -> SIEM
+    emulation:
+      atomic: atomics/T1048.003/T1048.003.yaml
+      test: DAC - Encode a dummy file into DNS queries to a lab resolver
+      upstream: {technique: T1048.003, test: "none upstream for DNS - custom test"}
+    sample_data:
+      file: sample-logs/zeek/dns.jsonl
+      expected_matches: [zk-dns-001, zk-dns-002]
+      # zk-dns-102 (Sophos long-hash lookup) must NOT match: tests the filter.

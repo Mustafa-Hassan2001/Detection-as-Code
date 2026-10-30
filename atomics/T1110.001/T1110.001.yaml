@@ -1,0 +1,38 @@
+attack_technique: T1110.001
+display_name: 'Brute Force: Password Guessing'
+atomic_tests:
+- name: DAC - Six wrong SSH passwords in a single connection
+  auto_generated_guid: f78622e0-e507-44ab-8eae-36e945b50f64
+  description: |
+    LAB MODE. Uses only the OpenSSH client: SSH_ASKPASS supplies a wrong password and
+    NumberOfPasswordPrompts makes the client retry inside ONE connection until the server's
+    MaxAuthTries (default 6) is reached - the pattern the Zeek rule looks for. Needs a lab
+    SSH server with password authentication enabled, and OpenSSH >= 8.4 on the client
+    (SSH_ASKPASS_REQUIRE). Triggers: zeek_ssh_password_guessing.
+  supported_platforms:
+  - linux
+  input_arguments:
+    target_host:
+      description: Lab SSH server (RFC 1918 / loopback only)
+      type: string
+      default: 127.0.0.1
+    target_port:
+      description: SSH port
+      type: integer
+      default: 22
+    target_user:
+      description: Account to guess against (use a lab test account)
+      type: string
+      default: dac-test
+    attempts:
+      description: Password prompts within the connection
+      type: integer
+      default: 6
+  executor:
+    command: |
+      printf '#!/bin/sh\necho dac-wrong-password\n' > /tmp/dac-askpass.sh && chmod 700 /tmp/dac-askpass.sh
+      SSH_ASKPASS=/tmp/dac-askpass.sh SSH_ASKPASS_REQUIRE=force DISPLAY=:0 ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o PreferredAuthentications=password -o PubkeyAuthentication=no -o NumberOfPasswordPrompts=#{attempts} -p #{target_port} #{target_user}@#{target_host} true < /dev/null || true
+    cleanup_command: |
+      rm -f /tmp/dac-askpass.sh
+    name: sh
+    elevation_required: false

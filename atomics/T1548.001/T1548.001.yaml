@@ -1,0 +1,24 @@
+attack_technique: T1548.001
+display_name: 'Abuse Elevation Control Mechanism: Setuid and Setgid'
+atomic_tests:
+- name: DAC - Set the setuid bit on a harmless test binary
+  auto_generated_guid: 0f507f55-6138-46f5-b0fd-1d4bb4d9a533
+  description: |
+    Copies /bin/true (a binary that does nothing) to /tmp and sets its setuid bit, so the
+    test never creates a usable root backdoor. Triggers: proc_creation_lnx_chmod_setuid.
+  supported_platforms:
+  - linux
+  input_arguments:
+    test_file:
+      description: File that receives the setuid bit
+      type: path
+      default: /tmp/dac-suid-test
+  executor:
+    command: |
+      cp /bin/true #{test_file}
+      chmod u+s #{test_file}
+      ls -l #{test_file}
+    cleanup_command: |
+      rm -f #{test_file}
+    name: sh
+    elevation_required: false

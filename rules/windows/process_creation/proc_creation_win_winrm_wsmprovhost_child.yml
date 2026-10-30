@@ -1,0 +1,34 @@
+title: Process Spawned by WinRM Remote Shell Host (wsmprovhost.exe)
+id: 5073fdbb-980a-4af8-8ea2-8d153fbb3221
+status: test
+description: |
+  Detects child processes of wsmprovhost.exe, the host process that executes PowerShell
+  Remoting / WinRM sessions on the target system (Enter-PSSession, Invoke-Command). An
+  interactive tool or LOLBin started from it means a remote user is executing commands on
+  this host, which is the defining artefact of lateral movement via WinRM. conhost.exe is
+  filtered because it is created for every console session.
+references:
+  - https://attack.mitre.org/techniques/T1021/006/
+  - https://github.com/redcanaryco/atomic-red-team/blob/master/atomics/T1021.006/T1021.006.md
+  - https://github.com/SigmaHQ/sigma/blob/05d1031f537e830b76da53bae2400c5814c89165/rules/windows/process_creation/proc_creation_win_winrm_susp_child_process.yml
+author: 'Syed Mustafa Hassan (adaptation); original SigmaHQ rule(s) by Andreas Hunkeler (@Karneades), Markus Neis'
+date: 2026-10-29
+license: DRL-1.1
+related:
+  - id: 5cc2cda8-f261-4d88-a2de-e9e193c86716
+    type: derived
+tags:
+  - attack.lateral-movement
+  - attack.t1021.006
+logsource:
+  category: process_creation
+  product: windows
+detection:
+  selection:
+    ParentImage|endswith: '\wsmprovhost.exe'
+  filter_main_conhost:
+    Image|endswith: '\conhost.exe'
+  condition: selection and not 1 of filter_main_*
+falsepositives:
+  - Configuration management over WinRM (Ansible, DSC, SCCM scripts). Allow-list by the source account / management server once baselined.
+level: medium

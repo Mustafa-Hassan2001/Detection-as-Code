@@ -1,0 +1,53 @@
+title: Setuid or Setgid Bit Set With chmod
+id: 4c1c4e63-b9a9-43cb-89cf-1fae20958ede
+status: test
+description: |
+  Detects chmod being used to set the setuid or setgid bit (symbolic u+s/g+s/+s or
+  numeric modes 4xxx/2xxx/6xxx). A setuid-root copy of a shell or interpreter lets any
+  later local user regain root, so attackers who briefly gain root use this as a privilege
+  escalation backdoor. Package managers set these bits legitimately during installs, so
+  chmod calls started by a package manager or by a package maintainer script
+  (/var/lib/dpkg/info/*.postinst, rpm scriptlets) are filtered.
+references:
+  - https://attack.mitre.org/techniques/T1548/001/
+  - https://github.com/redcanaryco/atomic-red-team/blob/master/atomics/T1548.001/T1548.001.md
+  - https://github.com/SigmaHQ/sigma/blob/05d1031f537e830b76da53bae2400c5814c89165/rules/linux/process_creation/proc_creation_lnx_setgid_setuid.yml
+author: Syed Mustafa Hassan
+date: 2026-10-29
+related:
+  - id: c21c4eaa-ba2e-419a-92b2-8371703cbe21
+    type: similar
+tags:
+  - attack.privilege-escalation
+  - attack.t1548.001
+logsource:
+  category: process_creation
+  product: linux
+detection:
+  selection:
+    Image|endswith: '/chmod'
+    CommandLine|contains:
+      - ' u+s '
+      - ' g+s '
+      - ' +s '
+      - ' 4755 '
+      - ' 4777 '
+      - ' 4711 '
+      - ' 2755 '
+      - ' 6755 '
+  filter_main_package_manager:
+    ParentImage|endswith:
+      - '/dpkg'
+      - '/rpm'
+      - '/apt'
+      - '/apt-get'
+      - '/yum'
+      - '/dnf'
+  filter_main_package_scripts:
+    ParentCommandLine|contains:
+      - '/var/lib/dpkg/info/'
+      - '/var/tmp/rpm-tmp.'
+  condition: selection and not 1 of filter_main_*
+falsepositives:
+  - Administrators building custom tools that require setuid. These should be rare and change-managed.
+level: medium

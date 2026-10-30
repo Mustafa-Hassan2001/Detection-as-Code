@@ -1,0 +1,45 @@
+# SIEM conversion targets for tools/convert.py (which drives sigma-cli).
+#
+# Each target = one sigma-cli backend + an ordered list of processing pipelines.
+# Pipelines are either built-in identifiers (`sigma list pipelines`) or YAML files in
+# pipelines/. Every rule is converted separately, so one unsupported rule cannot hide the
+# result of another, and the per-rule files make conversion changes reviewable in diffs.
+#
+#   per_rule        -> converted/<target>/<dir>/<rule>.<extension>
+#   bundles         -> one file containing all supported rules (for bulk import)
+#   expected_unsupported
+#                   -> rules a target is KNOWN not to support (documented gap). A conversion
+#                      failure for any other rule fails the build.
+
+targets:
+  elastic:
+    description: Elasticsearch / Kibana Security (Elastic Common Schema field names)
+    backend: lucene
+    pipelines:
+      - ecs_windows
+      - ecs_zeek_beats
+      - pipelines/ecs_linux.yml
+    per_rule:
+      - {format: default, dir: lucene, extension: lucene}
+    bundles:
+      - {format: siem_rule_ndjson, file: kibana-detection-rules.ndjson}
+    expected_unsupported: []
+
+  wazuh:
+    description: Wazuh indexer / dashboard (OpenSearch, Wazuh decoder field names)
+    backend: opensearch_lucene
+    pipelines:
+      - sysmon
+      - pipelines/wazuh.yml
+    backend_options:
+      # Raw (non-alert) events are only indexed when Wazuh archives are enabled
+      # (logall_json + filebeat archives) - see docs/lab-integration.md.
+      index_names: [wazuh-archives-*, wazuh-alerts-*]
+    per_rule:
+      - {format: default, dir: lucene, extension: lucene}
+      - {format: monitor_rule, dir: monitors, extension: json}
+    bundles:
+      - {format: dashboards_ndjson, file: wazuh-dashboard-saved-searches.ndjson}
+    expected_unsupported:
+      # No stock Wazuh decoder for Sysmon for Linux -> rejected by pipelines/wazuh.yml.
+      - rules/linux/process_creation/*.yml

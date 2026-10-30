@@ -1,0 +1,27 @@
+attack_technique: T1021.006
+display_name: 'Remote Services: Windows Remote Management'
+atomic_tests:
+- name: DAC - Invoke-Command runs whoami over WinRM
+  auto_generated_guid: dd8aa8a8-9934-41b7-af38-3cb10d3055a8
+  description: |
+    Uses PowerShell Remoting to run whoami.exe on a lab host. On the target, whoami.exe is
+    a child of wsmprovhost.exe. Triggers: proc_creation_win_winrm_wsmprovhost_child.
+  supported_platforms:
+  - windows
+  input_arguments:
+    remote_host:
+      description: Lab host with WinRM enabled
+      type: string
+      default: localhost
+  dependency_executor_name: powershell
+  dependencies:
+  - description: "WinRM must be reachable on #{remote_host}"
+    prereq_command: |
+      try { Test-WSMan -ComputerName #{remote_host} -ErrorAction Stop | Out-Null; exit 0 } catch { exit 1 }
+    get_prereq_command: |
+      Enable-PSRemoting -Force
+  executor:
+    command: |
+      Invoke-Command -ComputerName #{remote_host} -ScriptBlock { & "$env:SystemRoot\System32\whoami.exe" /all }
+    name: powershell
+    elevation_required: true
